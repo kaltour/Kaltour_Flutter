@@ -8,50 +8,24 @@ import 'firebase_options.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:dio/dio.dart';
 
-
+@pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print("백그라운드 메시지 처리.. ${message.notification!.body!}");
+  print("백그라운드 데이터 처리 ${message.data}");
+}
+@pragma('vm:entry-point')
+void backgroundHandler(NotificationResponse details) {
 
 }
-
-Future onBackgroundHandler(RemoteMessage message) async {
-  print("onBackgroundMessage: ${message.data}");
-  return Future.value();
-}
-
-void initializeNotification() async {
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<
-      AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(const AndroidNotificationChannel(
-
-      'high_importance_channel', 'high_importance_notification',
-      importance: Importance.max));
-
-  await flutterLocalNotificationsPlugin.initialize(const InitializationSettings(
-
-    android: AndroidInitializationSettings("@mipmap/ic_launcher"),
-
-
-  ));
-
-  await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
-
-}
-
 
 void main()  async {
   WidgetsFlutterBinding.ensureInitialized();
   print("!!!RUN APP!!!");
 
   await Firebase.initializeApp();
-  FirebaseMessaging.onBackgroundMessage(onBackgroundHandler);
+  initializeNotification();
+  initNoti();
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   FirebaseMessaging.instance.requestPermission(
     badge: true,
     alert: true,
@@ -63,7 +37,6 @@ void main()  async {
   });
 
   runApp(MyApp());
-
 
 }
 class MyApp extends StatelessWidget {
@@ -80,6 +53,71 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
+
+// void initializeNotification() async {
+//   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+//   final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+//   await flutterLocalNotificationsPlugin
+//       .resolvePlatformSpecificImplementation<
+//       AndroidFlutterLocalNotificationsPlugin>()
+//       ?.createNotificationChannel(const AndroidNotificationChannel(
+//
+//       'high_importance_channel', 'high_importance_notification',
+//       importance: Importance.max));
+//
+//   await flutterLocalNotificationsPlugin.initialize(const InitializationSettings(
+//
+//     android: AndroidInitializationSettings("@mipmap/ic_launcher"),
+//
+//
+//   ));
+//
+//   await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+//     alert: true,
+//     badge: true,
+//     sound: true,
+//   );
+//
+// }
+
+void initializeNotification() async {
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(const AndroidNotificationChannel(
+      'high_importance_channel', 'high_importance_notification',
+      importance: Importance.max));
+  await flutterLocalNotificationsPlugin.initialize(const InitializationSettings(
+    android: AndroidInitializationSettings("@mipmap/ic_launcher"),
+
+  ));
+
+  await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+    alert: true,
+    badge: true,
+    sound: true,
+
+  );
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    print("오픈 메시지 데이터 처리 ${message.data}");
+  });
+  RemoteMessage? message = await FirebaseMessaging.instance.getInitialMessage();
+
+  if (message != null) {
+
+  }
+}
+
+void initNoti() async {
+
+
+}
+
+
+
 
 class WebViewExample extends StatefulWidget {
   @override
@@ -147,14 +185,18 @@ class _WebViewExampleState extends State<WebViewExample> {
     super.initState();
 
   }
+
   Widget build(BuildContext context) {
+
+    var realUrl = "https://m.kaltour.com/";
+
     return Scaffold(
       // appBar: AppBar(
       //   // title: Text('WebView Example'),
       // ),
       body: SafeArea (
         child: WebView (
-          initialUrl: "https://m.kaltour.com/",
+          initialUrl: realUrl,
           javascriptMode: JavascriptMode.unrestricted,
         ),
 
