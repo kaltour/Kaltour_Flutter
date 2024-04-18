@@ -21,18 +21,47 @@ void backgroundHandler(NotificationResponse details) {
 }
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
   print("!!!RUN APP!!!");
-
+  WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   initializeNotification();
   WidgetsFlutterBinding.ensureInitialized();
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  sendToken(); // 토큰 받아서 서버에 전송
+
   FirebaseMessaging.instance.requestPermission(
     badge: true,
     alert: true,
     sound: true,
   );
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+    print('Foreground에서 푸시 받음');
+    print('Message data: ${message.data}');
+
+    RemoteNotification? notification = message.notification;
+    if(notification != null) {
+      FlutterLocalNotificationsPlugin().show(
+          notification.hashCode,
+          notification.title,
+          notification.body,
+          const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'high_importance_channel',
+              'high_importance_notifications',
+              importance: Importance.max
+            )
+          )
+      );
+    }
+
+    if (message.notification != null) {
+      print('Message also contained a notification: ${message.notification}');
+
+
+
+    }
+  });
 
   FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
     // save token to server
@@ -61,6 +90,8 @@ class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     _configureFirebaseMessaging(context);
+
+
     // return MaterialApp(
     //   home: Scaffold(
     //     body: SafeArea(
@@ -103,15 +134,7 @@ void initializeNotification() async {
     badge: true,
     sound: true,
   );
-  // FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-  //   print("오픈 메시지 데이터 처리 ${message.data}");
-  //   String url = message.data['sequence'];
-  //   if(url != null) {
-  //     Navigator.push(
-  //
-  //     );
-  //   }
-  // });
+
 
   RemoteMessage? message = await FirebaseMessaging.instance.getInitialMessage();
   if (message != null) {
@@ -128,14 +151,45 @@ class WebViewExample extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: WebView(
-        initialUrl: url,
-        javascriptMode: JavascriptMode.unrestricted,
+      body: SafeArea(
+        child: WebView(
+          initialUrl: url,
+          javascriptMode: JavascriptMode.unrestricted,
+        ),
       ),
+      // body: WebView(
+      //   initialUrl: url,
+      //   javascriptMode: JavascriptMode.unrestricted,
+      // ),
     );
   }
 }
+void sendToken() async {
+  String? _fcmToken = await FirebaseMessaging.instance.getToken();
+  print("토큰 = $_fcmToken");
 
+  final dio = Dio();
+  Response response;
+  final myToken = FirebaseMessaging.instance.getToken();
+  print("나의 토큰: $myToken");
+  const token = "X%2FWnoeM%2BhLdu9VP7ncdF5A%3D%3D";
+  // The below request is the same as above.
+  response = await dio.get(
+    'https://www.kaltour.com/API/WebPush/call',
+    queryParameters: {
+      "TOK": myToken,
+      "TYP": "M",
+      "GNT": "",
+      "CID": "",
+      "URL": "gohanway.kaltour.com",
+      "PTH": "IOS",
+      "AK" : "X%2FWnoeM%2BhLdu9VP7ncdF5A%3D%3D"
+    },
+  );
+  print("리스폰스");
+  print(response.data.toString());
+
+}
 void _handleMessageOpenedApp(RemoteMessage message, BuildContext context) {
   print("오픈 메시지");
   print("컨텍스트 = $context"); //"MyApp"
@@ -189,27 +243,27 @@ class SecondPage extends StatelessWidget {
 //     print("내 디바이스 토큰: $token");
 //   }
 //
-//   final dio = Dio();
-//   void request() async {
-//     Response response;
-//     final myToken = FirebaseMessaging.instance.getToken();
-//     print("나의 토큰: $myToken");
-//     const token = "X%2FWnoeM%2BhLdu9VP7ncdF5A%3D%3D";
-//     // The below request is the same as above.
-//     response = await dio.get(
-//       'https://www.kaltour.com/API/WebPush/call',
-//       queryParameters: {
-//         "TOK": myToken,
-//         "TYP": "M",
-//         "GNT": "",
-//         "CID": "",
-//         "URL": "gohanway.kaltour.com",
-//         "PTH": "IOS",
-//         "AK" : "X%2FWnoeM%2BhLdu9VP7ncdF5A%3D%3D"
-//       },
-//     );
-//     print(response.data.toString());
-//   }
+  final dio = Dio();
+  void request() async {
+    Response response;
+    final myToken = FirebaseMessaging.instance.getToken();
+    print("나의 토큰: $myToken");
+    const token = "X%2FWnoeM%2BhLdu9VP7ncdF5A%3D%3D";
+    // The below request is the same as above.
+    response = await dio.get(
+      'https://www.kaltour.com/API/WebPush/call',
+      queryParameters: {
+        "TOK": myToken,
+        "TYP": "M",
+        "GNT": "",
+        "CID": "",
+        "URL": "gohanway.kaltour.com",
+        "PTH": "IOS",
+        "AK" : "X%2FWnoeM%2BhLdu9VP7ncdF5A%3D%3D"
+      },
+    );
+    print(response.data.toString());
+  }
 //
 //   @override
 //
