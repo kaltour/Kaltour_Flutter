@@ -1,5 +1,7 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:kaltour_hybrid/GlobalVariable.dart';
+// import 'package:kaltour_hybrid/WebViewSecond.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 // import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
@@ -38,35 +40,19 @@ void main() async {
   runApp(MyApp());
 }
 
-void _handleMessageOpenedApp(RemoteMessage message, BuildContext context) {
-  print("오픈 메시지");
-  String url = message.data['sequence'];
-  if (url != null) {
-    print("시퀀스가 있음");
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => MyWebViewExample(url)),
-    );
-  }
-}
-
-void _configureFirebaseMessaging(BuildContext context) {
-  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-    _handleMessageOpenedApp(message, context);
-  });
-}
-
 class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    _configureFirebaseMessaging(context);
+
 
     return MaterialApp(
+      navigatorKey: GlobalVariable.navState,
       debugShowCheckedModeBanner: false,
       home: MyHomePage(),
     );
   }
+
 }
 
 class MyHomePage extends StatelessWidget {
@@ -74,22 +60,26 @@ class MyHomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    _configureFirebaseMessaging(context);
+    // return MaterialApp(
+    //   home: Scaffold(
+    //     body: SafeArea(
+    //       child: WebView(
+    //         initialUrl: "https://m.kaltour.com/",
+    //         javascriptMode: JavascriptMode,
+    //       ),
+    //     ),
+    //   )
+    // );
 
-    return MaterialApp(
-      home: WebView(
-        initialUrl: "https://m.kaltour.com/",
-        javascriptMode: JavascriptMode.unrestricted,
+    return Scaffold(
+      body: SafeArea(
+        child: WebView(
+          initialUrl: "https://m.kaltour.com/",
+          javascriptMode: JavascriptMode.unrestricted,
+        ),
       ),
     );
-
-    // return Scaffold(
-    //   body: SafeArea(
-    //     child: WebView(
-    //       initialUrl: "https://m.kaltour.com/",
-    //       javascriptMode: JavascriptMode.unrestricted,
-    //     ),
-    //   ),
-    // );
   }
 }
 
@@ -129,26 +119,56 @@ void initializeNotification() async {
 }
 
 
-class MyWebViewExample extends StatelessWidget {
-  // const MyWebViewExample({super.key});
+class WebViewExample extends StatelessWidget {
 
   final String url;
 
-  MyWebViewExample(this.url);
+  WebViewExample(this.url);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // body: WebView(
-      //   initialUrl: url,
-      //   javascriptMode: JavascriptMode.unrestricted,
-      // ),
-      body: Center(
-        child: Text("hi"),
+      body: WebView(
+        initialUrl: url,
+        javascriptMode: JavascriptMode.unrestricted,
       ),
     );
   }
 }
+
+void _handleMessageOpenedApp(RemoteMessage message, BuildContext context) {
+  print("오픈 메시지");
+  print("컨텍스트 = $context"); //"MyApp"
+  String url = message.data['sequence'];
+  if (url != null) {
+    print("시퀀스 데이터 유알엘 = $url");
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => WebViewExample(url)),
+    );
+  }else {
+    print("시퀀스가 없음");
+  }
+}
+void _configureFirebaseMessaging(BuildContext context) {
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    _handleMessageOpenedApp(message, context);
+  });
+}
+
+class SecondPage extends StatelessWidget {
+  const SecondPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Text("두번째 페이지"),
+    );
+  }
+}
+
+
 
 //
 // class WebViewExample extends StatefulWidget {
