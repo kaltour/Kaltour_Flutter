@@ -1,5 +1,6 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 // import 'package:kaltour_hybrid/GlobalVariable.dart';
 // import 'package:kaltour_hybrid/WebViewSecond.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -9,7 +10,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:dio/dio.dart';
-
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 // @pragma('vm:entry-point')
 // Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 //   print("백그라운드 메시지 처리.. ${message.notification!.body!}");
@@ -96,100 +98,6 @@ void main() async {
   runApp(MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    var initialzationsettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    var initializationSettings =
-        InitializationSettings(android: initialzationsettingsAndroid);
-
-    flutterLocalNotificationsPlugin.initialize(initializationSettings);
-
-    return MaterialApp(
-      // navigatorKey: GlobalVariable.navState,
-      debugShowCheckedModeBanner: false,
-      home: MyHomePage(),
-    );
-  }
-}
-
-class MyHomePage extends StatelessWidget {
-  const MyHomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    _configureFirebaseMessaging(context);
-
-    var nimi = FirebaseMessaging.instance.getToken();
-
-    print("니미 $nimi");
-
-    return Scaffold(
-      body: SafeArea(
-        child: WebView(
-          initialUrl: "https://m.kaltour.com/",
-          javascriptMode: JavascriptMode.unrestricted,
-        ),
-      ),
-    );
-  }
-}
-
-class WebViewExample extends StatelessWidget {
-  final String url; // PUSH로 받은 데이터를 저장하는 변수
-
-  WebViewExample(this.url);
-
-  @override
-  Widget build(BuildContext context) {
-    const webPush =
-        "https://www.kaltour.com/WebPush/Callback?SeqNo="; //시퀀스만 빠진 url
-    var fullUrl = webPush + url; // url과 시퀀스가 합쳐진 변수
-
-    print("FULLURL =  $fullUrl");
-
-    return Scaffold(
-      body: SafeArea(
-        child: WebView(
-          initialUrl: fullUrl, //푸시를 누를때 오픈되는 url
-          javascriptMode: JavascriptMode.unrestricted,
-        ),
-      ),
-      // body: WebView(
-      //   initialUrl: url,
-      //   javascriptMode: JavascriptMode.unrestricted,
-      // ),
-    );
-  }
-}
-
-// void initializeNotification() async {
-//   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-//   final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-//   await flutterLocalNotificationsPlugin
-//       .resolvePlatformSpecificImplementation<
-//       AndroidFlutterLocalNotificationsPlugin>()
-//       ?.createNotificationChannel(const AndroidNotificationChannel(
-//       'high_importance_channel', 'high_importance_notification',
-//       importance: Importance.max));
-//   await flutterLocalNotificationsPlugin.initialize(const InitializationSettings(
-//     android: AndroidInitializationSettings("@mipmap/ic_launcher"),
-//
-//   ));
-//
-//   await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-//     alert: true,
-//     badge: true,
-//     sound: true,
-//   );
-//
-//
-//   RemoteMessage? message = await FirebaseMessaging.instance.getInitialMessage();
-//   if (message != null) {
-//   }
-// }
-
 void sendToken() async {
   // String? _fcmToken = await FirebaseMessaging.instance.getToken();
   // print("토큰 = $_fcmToken");
@@ -216,6 +124,27 @@ void sendToken() async {
   print(response.data.toString());
 }
 
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    var initialzationsettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    var initializationSettings =
+        InitializationSettings(android: initialzationsettingsAndroid);
+
+    flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+    return MaterialApp(
+      // navigatorKey: GlobalVariable.navState,
+      debugShowCheckedModeBanner: false,
+      home: MyWebView(),
+    );
+  }
+}
+
+
+
+
 void _handleMessageOpenedApp(RemoteMessage message, BuildContext context) {
   print("오픈 메시지");
   print("컨텍스트 = $context"); //"MyApp"
@@ -227,7 +156,7 @@ void _handleMessageOpenedApp(RemoteMessage message, BuildContext context) {
 
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => WebViewExample(url)),
+      MaterialPageRoute(builder: (context) => PushWebView(url)),
     );
   } else {
     print("시퀀스가 없음");
@@ -239,3 +168,159 @@ void _configureFirebaseMessaging(BuildContext context) {
     _handleMessageOpenedApp(message, context);
   });
 }
+Future<bool> _goBack(BuildContext context) async {
+  if (await completerController.canGoBack()) {
+    completerController.goBack();
+    return Future.value(false);
+  } else {
+    showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('앱을 종료하시겠습니까?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () {
+                SystemNavigator.pop();
+              },
+              child: const Text('확인'),
+            ),
+          ],
+        ));
+    return Future.value(true);
+  }
+}
+
+
+class MyWebView extends StatefulWidget {
+  const MyWebView({super.key});
+
+
+  @override
+  State<MyWebView> createState() => _MyWebViewState();
+}
+
+class _MyWebViewState extends State<MyWebView> {
+  // final String url;
+  // _MyWebViewState(this.url);
+
+  InAppWebViewController? webViewController;
+  InAppWebViewGroupOptions options = InAppWebViewGroupOptions(
+      crossPlatform: InAppWebViewOptions(
+        useShouldOverrideUrlLoading: true, // URL 로딩 제어
+        mediaPlaybackRequiresUserGesture: false, // 미디어 자동 재생
+        javaScriptEnabled: true, // 자바스크립트 실행 여부
+        javaScriptCanOpenWindowsAutomatically: true, //
+      ),
+      android: AndroidInAppWebViewOptions(
+        useHybridComposition: true,
+      )
+  );
+
+
+  @override
+  Widget build(BuildContext context) {
+    _configureFirebaseMessaging(context);
+    return Scaffold(
+      body: SafeArea(
+        child: InAppWebView(
+          initialUrlRequest: URLRequest(
+              url: Uri.parse("https://m.kaltour.com/Main/MobileIndex")),
+          initialOptions: InAppWebViewGroupOptions(
+            android: AndroidInAppWebViewOptions(
+              mixedContentMode: AndroidMixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW
+            )
+          ),
+
+        ),
+      ),
+
+    );
+  }
+}
+
+class PushWebView extends StatelessWidget {
+  // const PushWebView({super.key});
+
+  final String url;
+  PushWebView(this.url);
+
+
+  @override
+  Widget build(BuildContext context) {
+
+    const webPush =
+        "https://m.kaltour.com/ProductPlan/mobileIndex?exiSeq="; //시퀀스만 빠진 url
+    var fullUrl = webPush + url; // url과 시
+
+    return Scaffold(
+      body: SafeArea(
+        child: InAppWebView(
+          initialUrlRequest: URLRequest(url: Uri.parse(fullUrl)),
+          initialOptions: InAppWebViewGroupOptions(
+              android: AndroidInAppWebViewOptions(
+                  mixedContentMode: AndroidMixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW
+              )
+          ),
+
+        )
+
+
+      ),
+
+    );
+  }
+}
+
+
+// class MyHomePage extends StatelessWidget {
+//   const MyHomePage({super.key});
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     _configureFirebaseMessaging(context);
+//     return Scaffold(
+//       body: SafeArea(
+//         child: WebView(
+//           initialUrl: "https://m.kaltour.com/",
+//           javascriptMode: JavascriptMode.unrestricted,
+//         ),
+//       ),
+//     );
+//   }
+// }
+//
+// class WebViewExample extends StatelessWidget {
+//   final String url; // PUSH로 받은 데이터를 저장하는 변수
+//
+//   WebViewExample(this.url);
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     const webPush =
+//         "https://m.kaltour.com/ProductPlan/mobileIndex?exiSeq="; //시퀀스만 빠진 url
+//     var fullUrl = webPush + url; // url과 시퀀스가 합쳐진 변수
+//
+//     print("FULLURL =  $fullUrl");
+//
+//     return Scaffold(
+//       body: SafeArea(
+//         child: WebView(
+//           initialUrl: fullUrl, //푸시를 누를때 오픈되는 url
+//           javascriptMode: JavascriptMode.unrestricted,
+//         ),
+//       ),
+//       // body: WebView(
+//       //   initialUrl: url,
+//       //   javascriptMode: JavascriptMode.unrestricted,
+//       // ),
+//     );
+//   }
+// }
+
+
