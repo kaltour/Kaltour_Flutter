@@ -1,8 +1,8 @@
+// import 'dart:js';
+
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-// import 'package:kaltour_hybrid/GlobalVariable.dart';
-// import 'package:kaltour_hybrid/WebViewSecond.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 // import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
@@ -12,18 +12,14 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
-// @pragma('vm:entry-point')
-// Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-//   print("백그라운드 메시지 처리.. ${message.notification!.body!}");
-//   print("백그라운드 데이터 처리 ${message.data}");
-// }
-
+import 'package:fluttertoast/fluttertoast.dart';
 @pragma('vm:entry-point')
 void backgroundHandler(NotificationResponse details) {}
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // If you're going to use other Firebase services in the background, such as Firestore,
   // make sure you call `initializeApp` before using other Firebase services.
+
   print("_firebaseMessagingBackgroundHandler");
   print("백그라운드 메시지 처리.. ${message.notification!.body!}");
   print("백그라운드 데이터 처리 ${message.data}");
@@ -44,6 +40,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       ));
 
   print('Handling a background message ${message.messageId}');
+
+
+
 }
 
 const AndroidNotificationChannel channel = AndroidNotificationChannel(
@@ -116,7 +115,7 @@ void sendToken() async {
       "GNT": "",
       "CID": "",
       "URL": "gohanway.kaltour.com",
-      "PTH": "IOS",
+      "PTH": "AOS",
       "AK": "X%2FWnoeM%2BhLdu9VP7ncdF5A%3D%3D"
     },
   );
@@ -142,9 +141,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-
-
-
 void _handleMessageOpenedApp(RemoteMessage message, BuildContext context) {
   print("오픈 메시지");
   print("컨텍스트 = $context"); //"MyApp"
@@ -167,33 +163,6 @@ void _configureFirebaseMessaging(BuildContext context) {
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
     _handleMessageOpenedApp(message, context);
   });
-}
-Future<bool> _goBack(BuildContext context) async {
-  if (await completerController.canGoBack()) {
-    completerController.goBack();
-    return Future.value(false);
-  } else {
-    showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('앱을 종료하시겠습니까?'),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('취소'),
-            ),
-            TextButton(
-              onPressed: () {
-                SystemNavigator.pop();
-              },
-              child: const Text('확인'),
-            ),
-          ],
-        ));
-    return Future.value(true);
-  }
 }
 
 
@@ -222,6 +191,39 @@ class _MyWebViewState extends State<MyWebView> {
       )
   );
 
+  Future<void> setupInteractedMessage() async {
+    RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+
+    if (initialMessage != null){
+      // Fluttertoast.showToast(msg: "$initialMessage");
+
+      _handleMessage(initialMessage);
+    }
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
+  }
+  void _handleMessage(RemoteMessage message) {
+
+    String url = message.data["sequence"];
+    if(url != null) {
+      // Fluttertoast.showToast(msg: "${message.data}");
+      Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context)=> PushWebView(url)),
+      );
+    }
+  }
+
+
+  @override
+  void initState() {
+    super.initState();
+    setupInteractedMessage();
+  }
+
+
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -230,7 +232,7 @@ class _MyWebViewState extends State<MyWebView> {
       body: SafeArea(
         child: InAppWebView(
           initialUrlRequest: URLRequest(
-              url: Uri.parse("https://m.kaltour.com/Main/MobileIndex")),
+              url: Uri.parse("https://m.kaltour.com/")),
           initialOptions: InAppWebViewGroupOptions(
             android: AndroidInAppWebViewOptions(
               mixedContentMode: AndroidMixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW
