@@ -13,7 +13,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'dart:io';
 
-void main() async {
+ const platform = MethodChannel('androidIntent');
+
+void main() async { //시작점
 
   print("!!!RUN APP!!!");
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,16 +25,23 @@ void main() async {
 
   sendToken(); // 토큰 받아서 서버에 전송
 
+
   FirebaseMessaging.instance.requestPermission(
     badge: true,
     alert: true,
     sound: true,
   );
+
   FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
     print("FirebaseMessaging.onMessage.listen");
     print('Foreground에서 푸시 받음');
     print('Message data: ${message.data}');
 
+    String url = message.data['sequence'];
+    if(url != null) {
+      print("Foreground 데이터 URL = $url");
+
+    }
     RemoteNotification? notification = message.notification;
     if (notification != null) {
       FlutterLocalNotificationsPlugin().show(
@@ -124,8 +133,8 @@ void sendToken() async { // 토큰 발송
 }
 
 class MyApp extends StatelessWidget { //메인 함수에서 실행되는 첫번째 뷰
-  @override
 
+  @override
   Widget build(BuildContext context) {
     var initialzationsettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -165,6 +174,7 @@ void _configureFirebaseMessaging(BuildContext context) {
     _handleMessageOpenedApp(message, context);
   });
 }
+
 class MyWebView extends StatefulWidget {
   const MyWebView({super.key});
   @override
@@ -175,10 +185,14 @@ class MyWebView extends StatefulWidget {
 //************************************************************
 class _MyWebViewState extends State<MyWebView> {
   // static const platform = MethodChannel('fcm_default_channel');
-  static const platform = MethodChannel('androidIntent');
-  double progress = 0;
-  Uri myUrl = Uri.parse("https://m.kaltour.com//");
 
+  double progress = 0;
+  Uri myUrl = Uri.parse("https://m.kaltour.com/");
+
+  void clearWebViewCache(WebViewController controller) async {
+    await controller.clearCache();
+    print('WebView 캐시가 삭제되었습니다.');
+  }
   // final String url;
   // _MyWebViewState(this.url);
 
@@ -218,7 +232,7 @@ class _MyWebViewState extends State<MyWebView> {
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
   }
 
-  Future<String> getAppUrl(String url) async {
+  Future<String> getAppUrl(String url) async {//앱 URL 받기
     if (Platform.isAndroid) {
       //print("안드로이드");
       return await platform
@@ -229,6 +243,9 @@ class _MyWebViewState extends State<MyWebView> {
     }
   }
 
+  Future<String> _convertIntentToMarketUrl(String text) async { // 마켁 URL 받기
+    return await platform.invokeMethod('getMarketUrl',  <String, Object>{'url': text});
+  }
   void _handleMessage(RemoteMessage message) {
 
     String url = message.data["sequence"];
@@ -246,7 +263,6 @@ class _MyWebViewState extends State<MyWebView> {
     super.initState();
     setupInteractedMessage();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -281,35 +297,60 @@ class _MyWebViewState extends State<MyWebView> {
                         appScheme != 'intent://' &&
                         appScheme != 'data';
                   }
+
                   final url = navigationAction.request.url.toString();
                   print("유알엘 = $url");
                       if(isApplink(url) && url != "about:blank") {
                         print("넘어간다");
-                        String getUrl = await getAppUrl(url);
-                        if (await canLaunch(getUrl)) {
-                          print("유알엘을 받음");
-                          await launch(getUrl);
 
+                        String getUrl = await getAppUrl(url);
+
+                        if(await canLaunch(getUrl)) {
+                          getAppUrl(String url) async {
+                            var parsingUrl = await platform.invokeMethod('getAppUrl', <String, Object>{'url':url});
+                            return parsingUrl;
+                          }
+                          NavigationActionPolicy.CANCEL;
+                          var value = await getAppUrl(url.toString());
+                          String getUrl = value.toString();
+                          await launchUrl(Uri.parse(getUrl));
                           return NavigationActionPolicy.CANCEL;
                         }else {
-                          NavigationActionPolicy.CANCEL;
-                          print("앱 설치되지 않음");
-                          showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text("앱이 설치되지 않았습니다."),
-                                actions: <Widget> [
-                                  ElevatedButton(onPressed: () {
-                                    Navigator.of(context).pop();
-
-                                  },
-                                      child: const Text("확인"))
-                                ],
-                              ));
+                            print("앱 설치되지 않음");
+                            getMarketUrl(String url) async {
+                              var parsingURl = await platform
+                                  .invokeMethod('getMarketUrl', <String, Object>{'url': url});
+                              return parsingURl;
+                            }
+                            NavigationActionPolicy.CANCEL;
+                            var value = await getMarketUrl(url.toString());
+                            String marketUrl = value.toString();
+                            await launchUrl(Uri.parse(marketUrl));
                         }
+
+                        // if (await canLaunch(getUrl)) {
+                        //   print("유알엘을 받음");
+                        //   await launch(getUrl);
+                        //   print("겟 유알엘 = $getUrl");
+                        //   return NavigationActionPolicy.CANCEL;
+                        //
+                        //
+                        // }else { // 앱이 없을때!!
+                        //   print("앱 설치되지 않음");
+                        //   getMarketUrl(String url) async {
+                        //     var parsingURl = await platform
+                        //         .invokeMethod('getMarketUrl', <String, Object>{'url': url});
+                        //     return parsingURl;
+                        //   }
+                        //   NavigationActionPolicy.CANCEL;
+                        //   var value = await getMarketUrl(url.toString());
+                        //   String marketUrl = value.toString();
+                        //   await launchUrl(Uri.parse(marketUrl));
+                        // }
                       }
                 },
                 onLoadStart: (InAppWebViewController controller, uri) {
+                  print("onLoadStart");
                   setState(() {myUrl = uri!;});
                 },
                 onLoadStop: (InAppWebViewController controller, uri) {
@@ -325,6 +366,7 @@ class _MyWebViewState extends State<MyWebView> {
                       action: PermissionRequestResponseAction.GRANT);
                 },
                 onWebViewCreated: (InAppWebViewController controller) {
+                  print("onWebViewCreated");
                   webViewController = controller;
                 },
 
@@ -339,20 +381,36 @@ class _MyWebViewState extends State<MyWebView> {
   }
 }
 
-
-
 class PushWebView extends StatelessWidget {
-  // const PushWebView({super.key});
+
+  late final InAppWebViewController webViewController;
+
+  Future<bool> _goBack(BuildContext context) async{
+    if(await webViewController.canGoBack()){
+      webViewController.goBack();
+      return Future.value(false);
+    }else{
+      return Future.value(true);
+    }
+  }
 
   final String url;
   PushWebView(this.url);
 
-
   @override
   Widget build(BuildContext context) {
 
-    const webPush =
-        "https://m.kaltour.com/ProductPlan/mobileIndex?exiSeq="; //시퀀스만 빠진 url
+    // Future<String> getAppUrl(String url) async {//앱 URL 받기
+    //   if (Platform.isAndroid) {
+    //     //print("안드로이드");
+    //     return await platform
+    //         .invokeMethod('getAppUrl', <String, Object>{'url': url});
+    //   } else {
+    //     //print("ios");
+    //     return url;
+    //   }
+    // }
+    const webPush = "https://m.kaltour.com/ProductPlan/mobileIndex?exiSeq="; //시퀀스만 빠진 url
     var fullUrl = webPush + url; // url과 시
 
     return Scaffold(
@@ -373,6 +431,3 @@ class PushWebView extends StatelessWidget {
     );
   }
 }
-
-
-
