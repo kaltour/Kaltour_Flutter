@@ -2,6 +2,7 @@ package com.example.kaltour_hybrid
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.net.Uri
 import io.flutter.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -18,21 +19,30 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         GeneratedPluginRegistrant.registerWith(flutterEngine);
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result -> // here is the error
-            when (call.method) {
-                "getAppUrl" -> try {
-                    val url: String? = call.argument("url")
-                    Log.i("url", url.toString())
-                    Log.i("시벌", "시발")
-                    val intent: Intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME)
+            when {
+                // Intent 스킴 URL을 안드로이드 웹뷰에서 접근가능하도록 변환
+                call.method.equals("getAppUrl") -> {
+                    val url: String = call.argument("url")!!
+
+                    var intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME)
+                    //여기서 Null이 뜸
+
                     result.success(intent.dataString)
-                } catch (e: URISyntaxException) {
-                    result.notImplemented()
-                    Log.i("니미","니미")
-                } catch (e: ActivityNotFoundException ) {
-                    result.notImplemented();
+                }
+
+                // Intent 스킴 URL을 playStore Market URL로 변환
+                call.method.equals("getMarketUrl") -> {
+                    val url: String = call.argument("url")!!
+                    val packageName = Intent.parseUri(url, Intent.URI_INTENT_SCHEME).getPackage()
+                    val marketUrl = Intent(
+                        Intent.ACTION_VIEW,
+//                        Uri.parse("market://details?id=$packageName")
+                        Uri.parse("market://details?id=$packageName")
+                    )
+                    result.success(marketUrl.dataString)
                 }
             }
-            setMixedContentMode()
+
         }
     }
 
@@ -49,5 +59,4 @@ class MainActivity : FlutterActivity() {
         private const val CHANNEL = "androidIntent"
     }
 }
-
 
