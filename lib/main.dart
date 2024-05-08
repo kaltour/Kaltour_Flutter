@@ -5,25 +5,89 @@ import 'package:webview_flutter/webview_flutter.dart';
 // import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
+// import 'firebase_options.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'dart:io';
+// import 'package:get/get.dart';
 
- const platform = MethodChannel('androidIntent');
+const platform = MethodChannel('androidIntent');
+FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+
+  print("백그라운드 메시지 처리.. ${message.notification!.body!}");
+
+  // flutterLocalNotificationsPlugin.show(
+  //   message.notification.hashCode,
+  //   message.notification!.title,
+  //   message.notification!.body,
+  //   NotificationDetails(
+  //     android: AndroidNotificationDetails(
+  //       'high_importance_channel', 'high_importance_notification',
+  //       icon: message.notification!.android!.smallIcon,
+  //
+  //       // channel.id,
+  //       // 'high_importance_notification',
+  //       // importance: Importance.max,
+  //       // icon: message.notification!.android!.smallIcon,
+  //     )
+  //   )
+  // );
+
+
+}
+void initializeNotification() async {
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(const AndroidNotificationChannel(
+
+      'high_importance_channel',
+      'high_importance_notification',
+      importance: Importance.high));
+
+
+
+  await flutterLocalNotificationsPlugin.initialize(const InitializationSettings(
+    android: AndroidInitializationSettings("@mipmap/ic_launcher"),
+
+
+  ));
+
+  await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+}
+const AndroidNotificationChannel channel = AndroidNotificationChannel(
+  'high_importance_channel', // id
+  'high_importance_notification', // title
+  // 'This channel is used for important notifications', //description
+  importance: Importance.high,
+);
+
+
 
 void main() async { //시작점
 
+  print("채널! = =$channel");
   print("!!!RUN APP!!!");
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  // initializeNotification();
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  initializeNotification();
+  // FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   sendToken(); // 토큰 받아서 서버에 전송
+
 
 
   FirebaseMessaging.instance.requestPermission(
@@ -31,84 +95,79 @@ void main() async { //시작점
     alert: true,
     sound: true,
   );
+  // await flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(channel);
 
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-    print("FirebaseMessaging.onMessage.listen");
-    print('Foreground에서 푸시 받음');
-    print('Message data: ${message.data}');
 
-    String url = message.data['sequence'];
-    if(url != null) {
-      print("Foreground 데이터 URL = $url");
+  // FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+  //   String url = message.data['sequence'];
+  //
+  //   if (url != null) {
+  //     print('Message also contained a notification: ${message.notification}');
+  //     flutterLocalNotificationsPlugin.show(
+  //         message.hashCode,
+  //         message.notification?.title,
+  //         message.notification?.body,
+  //         NotificationDetails(
+  //             // android: AndroidNotificationDetails(
+  //             //   'high_importance_channel',
+  //             //   'high_importance_notification',
+  //             //   // channelDescription: channel.description,
+  //             //   icon: '@mipmap/ic_launcher',
+  //             // ),
+  //          ));
+  //
+  //   }
+  //
+  //
+  // });
 
-    }
-    RemoteNotification? notification = message.notification;
-    if (notification != null) {
-      FlutterLocalNotificationsPlugin().show(
-          notification.hashCode,
-          notification.title,
-          notification.body,
-          const NotificationDetails(
-              android: AndroidNotificationDetails(
-                  'high_importance_channel', 'high_importance_notifications',
-                  importance: Importance.max)));
-    }
-    if (message.notification != null) {
-      print('Message also contained a notification: ${message.notification}');
-    }
-  });
-
-  FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
-    // save token to server
-  });
+  // FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+  //   // save token to server
+  // });
   runApp(MyApp());
 }
 
-@pragma('vm:entry-point')
-void backgroundHandler(NotificationResponse details) {}
+
+// void backgroundHandler(NotificationResponse details) {}
 
 
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // If you're going to use other Firebase services in the background, such as Firestore,
-  // make sure you call `initializeApp` before using other Firebase services.
+// Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+//   // If you're going to use other Firebase services in the background, such as Firestore,
+//   // make sure you call `initializeApp` before using other Firebase services.
+//
+//   print("_firebaseMessagingBackgroundHandler");
+//   print("백그라운드 메시지 처리.. ${message.notification!.body!}");
+//   print("백그라운드 데이터 처리 ${message.data}");
+//
+//   await Firebase.initializeApp();
+//   // 백그라운드에서 메세지 처리
+//   flutterLocalNotificationsPlugin.show(
+//       message.notification.hashCode,
+//       message.notification!.title,
+//       message.notification!.body,
+//       NotificationDetails(
+//         android: AndroidNotificationDetails(
+//           channel.id, channel.name,
+//           // TODO add a proper drawable resource to android, for now using
+//           //      one that already exists in example app.
+//           icon: message.notification!.android!.smallIcon,
+//         ),
+//       ));
+//
+//   print('Handling a background message ${message.messageId}');
+//
+// }
 
-  print("_firebaseMessagingBackgroundHandler");
-  print("백그라운드 메시지 처리.. ${message.notification!.body!}");
-  print("백그라운드 데이터 처리 ${message.data}");
+// const AndroidNotificationChannel channel = AndroidNotificationChannel(
+//   'high_importance_channel', // id
+//   'High Importance Notifications', // title
+//   importance: Importance.max,
+// );
 
-  await Firebase.initializeApp();
-  // 백그라운드에서 메세지 처리
-  flutterLocalNotificationsPlugin.show(
-      message.notification.hashCode,
-      message.notification!.title,
-      message.notification!.body,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          channel.id, channel.name,
-          // TODO add a proper drawable resource to android, for now using
-          //      one that already exists in example app.
-          icon: message.notification!.android!.smallIcon,
-        ),
-      ));
-
-  print('Handling a background message ${message.messageId}');
-
-}
-
-const AndroidNotificationChannel channel = AndroidNotificationChannel(
-  'high_importance_channel', // id
-  'High Importance Notifications', // title
-  // 'This channel is used for important notifications', //description
-  importance: Importance.max,
-);
-
-FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
 
 
 void sendToken() async { // 토큰 발송
-  // String? _fcmToken = await FirebaseMessaging.instance.getToken();
-  // print("토큰 = $_fcmToken");
+
 
   final dio = Dio();
   Response response;
@@ -136,12 +195,14 @@ class MyApp extends StatelessWidget { //메인 함수에서 실행되는 첫번�
 
   @override
   Widget build(BuildContext context) {
-    var initialzationsettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    var initializationSettings =
-        InitializationSettings(android: initialzationsettingsAndroid);
+    // var initialzationsettingsAndroid =
+    //     AndroidInitializationSettings('@mipmap/ic_launcher');
+    // var initializationSettings =
+    //     InitializationSettings(android: initialzationsettingsAndroid);
+    //
+    // flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
-    flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
 
     return MaterialApp(
       // navigatorKey: GlobalVariable.navState,
@@ -149,29 +210,33 @@ class MyApp extends StatelessWidget { //메인 함수에서 실행되는 첫번�
       home: MyWebView(),
     );
   }
+
+
+
 }
 
 void _handleMessageOpenedApp(RemoteMessage message, BuildContext context) { //포그라운드에서 푸시 클릭시 작동되는 함수
-  print("오픈 메시지");
-  print("컨텍스트 = $context"); //"MyApp"
   String url = message.data['sequence'];
-
   print("유알엘 ===== $url");
-  if (url != null) {
-    print("시퀀스 데이터 유알엘 = $url");
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => PushWebView(url)),
-    );
-  } else {
-    print("시퀀스가 없음");
-  }
+  // print("유알엘 ===== $url");
+  // if (url != null) {
+  //
+  //   print("시퀀스 데이터 유알엘 = $url");
+  //   Navigator.push(
+  //     context,
+  //     MaterialPageRoute(builder: (context) => PushWebView(url)),
+  //   );
+  // } else {
+  //   print("시퀀스가 없음");
+  // }
 }
 
 void _configureFirebaseMessaging(BuildContext context) {
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
     _handleMessageOpenedApp(message, context);
+
+    print("_configureFirebaseMessaging 정 $message + $context");
   });
 }
 
@@ -188,7 +253,6 @@ class _MyWebViewState extends State<MyWebView> {
 
   double progress = 0;
   Uri myUrl = Uri.parse("https://m.kaltour.com/");
-
   void clearWebViewCache(WebViewController controller) async {
     await controller.clearCache();
     print('WebView 캐시가 삭제되었습니다.');
@@ -243,19 +307,30 @@ class _MyWebViewState extends State<MyWebView> {
     }
   }
 
-  Future<String> _convertIntentToMarketUrl(String text) async { // 마켁 URL 받기
-    return await platform.invokeMethod('getMarketUrl',  <String, Object>{'url': text});
-  }
   void _handleMessage(RemoteMessage message) {
-
     String url = message.data["sequence"];
     if(url != null) {
-      // Fluttertoast.showToast(msg: "${message.data}");
       Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context)=> PushWebView(url)),
+        context,
+        MaterialPageRoute(builder: (context)=> PushWebView(url)),
       );
     }
+
+
+    // if(url != null) {
+    //   print("#푸시 들어옴#");
+    //   var pushSeq = url;
+    //   var pushUrl = "https://m.kaltour.com/ProductPlan/mobileIndex?exiSeq=";
+    //   var fullUrl = pushUrl+pushSeq;
+    //
+    //   myUrl = Uri.parse(fullUrl);
+    //
+    //   // Fluttertoast.showToast(msg: "${message.data}")
+    //   // Navigator.push( // PushWebView로 감
+    //   //     context,
+    //   //     MaterialPageRoute(builder: (context)=> PushWebView(url)),
+    //   // );
+    // }
   }
 
   @override
@@ -318,35 +393,15 @@ class _MyWebViewState extends State<MyWebView> {
                         }else {
                             print("앱 설치되지 않음");
                             getMarketUrl(String url) async {
-                              var parsingURl = await platform
-                                  .invokeMethod('getMarketUrl', <String, Object>{'url': url});
+                              var parsingURl = await platform.invokeMethod('getMarketUrl', <String, Object>{'url': url});
                               return parsingURl;
                             }
                             NavigationActionPolicy.CANCEL;
                             var value = await getMarketUrl(url.toString());
                             String marketUrl = value.toString();
                             await launchUrl(Uri.parse(marketUrl));
+                            return NavigationActionPolicy.CANCEL;
                         }
-
-                        // if (await canLaunch(getUrl)) {
-                        //   print("유알엘을 받음");
-                        //   await launch(getUrl);
-                        //   print("겟 유알엘 = $getUrl");
-                        //   return NavigationActionPolicy.CANCEL;
-                        //
-                        //
-                        // }else { // 앱이 없을때!!
-                        //   print("앱 설치되지 않음");
-                        //   getMarketUrl(String url) async {
-                        //     var parsingURl = await platform
-                        //         .invokeMethod('getMarketUrl', <String, Object>{'url': url});
-                        //     return parsingURl;
-                        //   }
-                        //   NavigationActionPolicy.CANCEL;
-                        //   var value = await getMarketUrl(url.toString());
-                        //   String marketUrl = value.toString();
-                        //   await launchUrl(Uri.parse(marketUrl));
-                        // }
                       }
                 },
                 onLoadStart: (InAppWebViewController controller, uri) {
@@ -394,22 +449,25 @@ class PushWebView extends StatelessWidget {
     }
   }
 
+  // Future<String> getAppUrl(String url) async {//앱 URL 받기
+  //   if (Platform.isAndroid) {
+  //     print("받음?");
+  //     //print("안드로이드");
+  //     return await platform
+  //         .invokeMethod('getAppUrl', <String, Object>{'url': url});
+  //   } else {
+  //     //print("ios");
+  //     return url;
+  //   }
+  // }
+
   final String url;
   PushWebView(this.url);
 
   @override
   Widget build(BuildContext context) {
 
-    // Future<String> getAppUrl(String url) async {//앱 URL 받기
-    //   if (Platform.isAndroid) {
-    //     //print("안드로이드");
-    //     return await platform
-    //         .invokeMethod('getAppUrl', <String, Object>{'url': url});
-    //   } else {
-    //     //print("ios");
-    //     return url;
-    //   }
-    // }
+    print("푸시웹뷰로 넘어감");
     const webPush = "https://m.kaltour.com/ProductPlan/mobileIndex?exiSeq="; //시퀀스만 빠진 url
     var fullUrl = webPush + url; // url과 시
 
@@ -422,10 +480,7 @@ class PushWebView extends StatelessWidget {
                   mixedContentMode: AndroidMixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW
               )
           ),
-
         )
-
-
       ),
 
     );

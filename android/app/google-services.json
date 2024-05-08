@@ -46,7 +46,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:690602777560:android:745c4503bd7907f50630ad",
         "android_client_info": {
-          "package_name": "m.kaltour.ver2"
+          "package_name": "com.example.kaltour_hybrid"
         }
       },
       "oauth_client": [
