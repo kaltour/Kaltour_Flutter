@@ -253,10 +253,10 @@ class _MyWebViewState extends State<MyWebView> {
 
   double progress = 0;
   Uri myUrl = Uri.parse("https://m.kaltour.com/");
-  void clearWebViewCache(WebViewController controller) async {
-    await controller.clearCache();
-    print('WebView 캐시가 삭제되었습니다.');
-  }
+  // void clearWebViewCache(WebViewController controller) async {
+  //   await controller.clearCache();
+  //   print('WebView 캐시가 삭제되었습니다.');
+  // }
   // final String url;
   // _MyWebViewState(this.url);
 
@@ -312,7 +312,8 @@ class _MyWebViewState extends State<MyWebView> {
     if(url != null) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context)=> PushWebView(url)),
+        // MaterialPageRoute(builder: (context)=> PushWebView(url)),
+        MaterialPageRoute(builder: (context)=>SecondView(myUrl: url))
       );
     }
 
@@ -436,7 +437,72 @@ class _MyWebViewState extends State<MyWebView> {
   }
 }
 
-class PushWebView extends StatelessWidget {
+// class PushWebView extends StatelessWidget {
+//
+//   late final InAppWebViewController webViewController;
+//
+//   Future<bool> _goBack(BuildContext context) async{
+//     if(await webViewController.canGoBack()){
+//       webViewController.goBack();
+//       return Future.value(false);
+//     }else{
+//       return Future.value(true);
+//     }
+//   }
+//
+//   // Future<String> getAppUrl(String url) async {//앱 URL 받기
+//   //   if (Platform.isAndroid) {
+//   //     print("받음?");
+//   //     //print("안드로이드");
+//   //     return await platform
+//   //         .invokeMethod('getAppUrl', <String, Object>{'url': url});
+//   //   } else {
+//   //     //print("ios");
+//   //     return url;
+//   //   }
+//   // }
+//
+//   final String url;
+//   PushWebView(this.url);
+//
+//   @override
+//   Widget build(BuildContext context) {
+//
+//     print("푸시웹뷰로 넘어감");
+//     const webPush = "https://m.kaltour.com/ProductPlan/mobileIndex?exiSeq="; //시퀀스만 빠진 url
+//     var fullUrl = webPush + url; // url과 시
+//
+//     return Scaffold(
+//       body: SafeArea(
+//         child: InAppWebView(
+//           initialUrlRequest: URLRequest(url: Uri.parse(fullUrl)),
+//           initialOptions: InAppWebViewGroupOptions(
+//               android: AndroidInAppWebViewOptions(
+//                   mixedContentMode: AndroidMixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW
+//               )
+//           ),
+//         )
+//       ),
+//
+//     );
+//   }
+// }
+//
+
+
+class SecondView extends StatefulWidget {
+  const SecondView({
+    required this.myUrl,
+    super.key});
+
+  final String myUrl;
+
+  @override
+  State<SecondView> createState() => _SecondViewState();
+
+}
+
+class _SecondViewState extends State<SecondView> {
 
   late final InAppWebViewController webViewController;
 
@@ -448,41 +514,96 @@ class PushWebView extends StatelessWidget {
       return Future.value(true);
     }
   }
-
-  // Future<String> getAppUrl(String url) async {//앱 URL 받기
-  //   if (Platform.isAndroid) {
-  //     print("받음?");
-  //     //print("안드로이드");
-  //     return await platform
-  //         .invokeMethod('getAppUrl', <String, Object>{'url': url});
-  //   } else {
-  //     //print("ios");
-  //     return url;
-  //   }
-  // }
-
-  final String url;
-  PushWebView(this.url);
+  Future<String> getAppUrl(String url) async {//앱 URL 받기
+    if (Platform.isAndroid) {
+      //print("안드로이드");
+      return await platform
+          .invokeMethod('getAppUrl', <String, Object>{'url': url});
+    } else {
+      //print("ios");
+      return url;
+    }
+  }
 
   @override
+
   Widget build(BuildContext context) {
 
-    print("푸시웹뷰로 넘어감");
-    const webPush = "https://m.kaltour.com/ProductPlan/mobileIndex?exiSeq="; //시퀀스만 빠진 url
-    var fullUrl = webPush + url; // url과 시
+    String myUrl = widget.myUrl;
 
     return Scaffold(
       body: SafeArea(
-        child: InAppWebView(
-          initialUrlRequest: URLRequest(url: Uri.parse(fullUrl)),
-          initialOptions: InAppWebViewGroupOptions(
-              android: AndroidInAppWebViewOptions(
-                  mixedContentMode: AndroidMixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW
-              )
-          ),
-        )
-      ),
+        child: WillPopScope (
+          onWillPop: () => _goBack(context),
+          child: Column(children:<Widget> [
+            Expanded(child: Stack(children: [
+              InAppWebView(
 
+                initialUrlRequest: URLRequest(url: Uri.parse(myUrl)) ,
+                initialOptions: InAppWebViewGroupOptions(
+                    crossPlatform: InAppWebViewOptions(
+                        useShouldOverrideUrlLoading: true
+                    ),
+                    android: AndroidInAppWebViewOptions(
+                        mixedContentMode: AndroidMixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW
+                    )
+                ),
+                shouldOverrideUrlLoading:(controller, navigationAction) async {
+
+                  bool isApplink(String url) {
+                    final appScheme = Uri.parse(url).scheme;
+
+                    print("앱스킴 = $appScheme"); //https
+
+                    return appScheme != 'http' &&
+                        appScheme != 'https' &&
+                        appScheme != 'about:blank' &&
+                        appScheme != 'intent://' &&
+                        appScheme != 'data';
+                  }
+
+                  final url = navigationAction.request.url.toString();
+                  print("유알엘 = $url");
+                  if(isApplink(url) && url != "about:blank") {
+                    print("넘어간다");
+
+                    String getUrl = await getAppUrl(url);
+
+                    if(await canLaunch(getUrl)) {
+                      getAppUrl(String url) async {
+                        var parsingUrl = await platform.invokeMethod('getAppUrl', <String, Object>{'url':url});
+                        return parsingUrl;
+                      }
+                      NavigationActionPolicy.CANCEL;
+                      var value = await getAppUrl(url.toString());
+                      String getUrl = value.toString();
+                      await launchUrl(Uri.parse(getUrl));
+                      return NavigationActionPolicy.CANCEL;
+                    }else {
+                      print("앱 설치되지 않음");
+                      getMarketUrl(String url) async {
+                        var parsingURl = await platform.invokeMethod('getMarketUrl', <String, Object>{'url': url});
+                        return parsingURl;
+                      }
+                      NavigationActionPolicy.CANCEL;
+                      var value = await getMarketUrl(url.toString());
+                      String marketUrl = value.toString();
+                      await launchUrl(Uri.parse(marketUrl));
+                      return NavigationActionPolicy.CANCEL;
+                    }
+                  }
+                },
+
+
+
+              )
+            ],))
+
+          ],),
+        ),
+      ),
     );
+
+
   }
 }
