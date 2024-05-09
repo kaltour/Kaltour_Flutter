@@ -1,4 +1,4 @@
-package com.example.kaltour_hybrid
+package m.kaltour.ver2
 
 import android.content.ActivityNotFoundException
 import android.content.Intent

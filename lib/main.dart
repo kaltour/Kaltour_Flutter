@@ -13,6 +13,11 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'dart:io';
 // import 'package:get/get.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:store_redirect/store_redirect.dart';
+import 'package:app_version_update/app_version_update.dart';
+
 
 const platform = MethodChannel('androidIntent');
 FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -79,6 +84,8 @@ const AndroidNotificationChannel channel = AndroidNotificationChannel(
 
 void main() async { //시작점
 
+
+
   print("채널! = =$channel");
   print("!!!RUN APP!!!");
   WidgetsFlutterBinding.ensureInitialized();
@@ -95,6 +102,11 @@ void main() async { //시작점
     alert: true,
     sound: true,
   );
+
+  PackageInfo packageInfo = await PackageInfo.fromPlatform();
+  String appVersion = packageInfo.version;
+
+  print("###앱 버전 = $appVersion");
   // await flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(channel);
 
 
@@ -125,7 +137,10 @@ void main() async { //시작점
   //   // save token to server
   // });
   runApp(MyApp());
+
 }
+
+
 
 
 // void backgroundHandler(NotificationResponse details) {}
@@ -184,7 +199,7 @@ void sendToken() async { // 토큰 발송
       "CID": "",
       "URL": "gohanway.kaltour.com",
       "PTH": "AOS",
-      "AK": "X%2FWnoeM%2BhLdu9VP7ncdF5A%3D%3D"
+      "AK": "X%2FWnoeM%2BhLdu9VP7ncdF버5A%3D%3D"
     },
   );
   print("리스폰스");
@@ -216,12 +231,12 @@ class MyApp extends StatelessWidget { //메인 함수에서 실행되는 첫번�
 }
 
 void _handleMessageOpenedApp(RemoteMessage message, BuildContext context) { //포그라운드에서 푸시 클릭시 작동되는 함수
-  String url = message.data['sequence'];
+  String url = message.data['url'];
   print("유알엘 ===== $url");
 
   // print("유알엘 ===== $url");
   // if (url != null) {
-  //
+  //알
   //   print("시퀀스 데이터 유알엘 = $url");
   //   Navigator.push(
   //     context,
@@ -308,13 +323,15 @@ class _MyWebViewState extends State<MyWebView> {
   }
 
   void _handleMessage(RemoteMessage message) {
-    String url = message.data["sequence"];
+    String url = message.data["url"];
     if(url != null) {
       Navigator.push(
         context,
         // MaterialPageRoute(builder: (context)=> PushWebView(url)),
         MaterialPageRoute(builder: (context)=>SecondView(myUrl: url))
       );
+    }else{
+      print("url못받음");
     }
 
 
@@ -338,11 +355,87 @@ class _MyWebViewState extends State<MyWebView> {
   void initState() {
     super.initState();
     setupInteractedMessage();
+
+    checkAppVersion();
+
+  }
+
+  Future<void> checkAppVersion() async {
+    final remoteConfig = FirebaseRemoteConfig.instance;
+    await remoteConfig.setConfigSettings(RemoteConfigSettings(
+      fetchTimeout: const Duration(minutes: 1),
+      minimumFetchInterval: const Duration(hours: 12),
+    ));
+
+    await remoteConfig.fetchAndActivate();
+    String firebaseVersion = remoteConfig.getString("latest_version");
+
+    PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    String appVersion = packageInfo.version;
+    print("파이어 베이스=$firebaseVersion, 앱버전=$appVersion");
+
+    if (double.parse(firebaseVersion) > double.parse(appVersion)) {
+      showUpdateDialog();
+      print("업데이트 해야함");
+    }
+    else {
+      MyWebView();
+      print("업데이트 안해도됨");
+    }
+  }
+
+  Future<void> showUpdateDialog() {
+    print("showUpdateDialog");
+    return showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          return AlertDialog(
+            title: const Center(child: Text("업데이트 알림")),
+            content: const Text(
+              "최신버전으로 업데이트 ㄱㄱㄱㄱㄱㄱㄱ",
+              textAlign: TextAlign.center,
+            ),
+            actions: <Widget>[
+              ElevatedButton(
+                  onPressed: () async {
+                    const url =
+                        'https://play.google.com/store/apps/details?id=m.kaltour.ver2';
+                    if (await canLaunchUrl(Uri.parse(url))) {
+                      await launchUrl(Uri.parse(url));
+                    }
+                  },
+                  style: const ButtonStyle(
+                      backgroundColor: MaterialStatePropertyAll<Color>(
+                          Color.fromRGBO(1, 123, 178, 0.6))),
+                  child: const Text(
+                    "업데이트하기",
+                    style: TextStyle(color: Colors.black),
+                  )),
+              ElevatedButton(
+                  onPressed: () async {
+                    // 앱 종료
+                    if (Platform.isAndroid) {
+                      // SystemNavigator.pop();
+                      Navigator.pop(context);
+                    } else if (Platform.isIOS) {
+                      exit(0);
+                    }
+                  },
+                  child: const Text(
+                    "닫기",
+                    style: TextStyle(color: Colors.black),
+                  ))
+            ],
+          );
+        });
   }
 
   @override
   Widget build(BuildContext context) {
+
     _configureFirebaseMessaging(context);
+
     return Scaffold(
       body: SafeArea(
         child: WillPopScope (
@@ -350,7 +443,6 @@ class _MyWebViewState extends State<MyWebView> {
           child: Column(children:<Widget> [
             Expanded(child: Stack(children: [
               InAppWebView(
-
                 initialUrlRequest: URLRequest(url: myUrl) ,
                 initialOptions: InAppWebViewGroupOptions(
                   crossPlatform: InAppWebViewOptions(
@@ -373,7 +465,6 @@ class _MyWebViewState extends State<MyWebView> {
                         appScheme != 'intent://' &&
                         appScheme != 'data';
                   }
-
                   final url = navigationAction.request.url.toString();
                   print("유알엘 = $url");
                       if(isApplink(url) && url != "about:blank") {
@@ -425,8 +516,6 @@ class _MyWebViewState extends State<MyWebView> {
                   print("onWebViewCreated");
                   webViewController = controller;
                 },
-
-
               )
             ],))
 
@@ -504,7 +593,7 @@ class SecondView extends StatefulWidget {
 
 class _SecondViewState extends State<SecondView> {
 
-  late final InAppWebViewController webViewController;
+
 
   Future<bool> _goBack(BuildContext context) async{
     if(await webViewController.canGoBack()){
@@ -514,6 +603,9 @@ class _SecondViewState extends State<SecondView> {
       return Future.value(true);
     }
   }
+
+  late final InAppWebViewController webViewController;
+
   Future<String> getAppUrl(String url) async {//앱 URL 받기
     if (Platform.isAndroid) {
       //print("안드로이드");
@@ -530,6 +622,7 @@ class _SecondViewState extends State<SecondView> {
   Widget build(BuildContext context) {
 
     String myUrl = widget.myUrl;
+    _configureFirebaseMessaging(context);
 
     return Scaffold(
       body: SafeArea(
@@ -593,6 +686,11 @@ class _SecondViewState extends State<SecondView> {
                     }
                   }
                 },
+                onWebViewCreated: (InAppWebViewController controller) {
+                  print("onWebViewCreated");
+                  webViewController = controller;
+                },
+
 
 
 
