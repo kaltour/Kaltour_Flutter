@@ -53,6 +53,10 @@ dependencies:
   firebase_analytics: ^10.8.9
   store_redirect: ^2.0.2
   app_version_update: ^3.1.0
+  permission_handler: ^11.3.1
+  notifications: ^3.0.0
+  device_info_plus: ^9.1.2
+  shared_preferences: ^2.2.3
 #  flutter_native_splash: ^2.3.9
 
 
