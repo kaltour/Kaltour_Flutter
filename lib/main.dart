@@ -2,8 +2,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-// import 'package:webview_flutter_android/webview_flutter_android.dart';
-import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
+
 import 'package:firebase_core/firebase_core.dart';
 // import 'firebase_options.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -21,8 +20,12 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:notifications/notifications.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-
+import 'package:timer_builder/timer_builder.dart';
+import 'package:intl/intl.dart';
+import 'package:http/http.dart'as http;
+import 'WebBridge.dart';
+import 'package:flutter/cupertino.dart';
+import 'RealUrl.dart';
 
 const platform = MethodChannel('androidIntent');
 FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -33,7 +36,6 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print("백그라운드 메시지 처리.. ${message.notification!.body!}");
   print("백그라운드 데이터 키 메시지 처리.. ${message.data.keys}");
   print("백그라운드 데이터 밸류 메시지 처리.. ${message.data.values}");
-
   // flutterLocalNotificationsPlugin.show(
   //   message.notification.hashCode,
   //   message.notification!.title,
@@ -50,10 +52,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   //     )
   //   )
   // );
-
-
 }
-
 const AndroidNotificationChannel channel = AndroidNotificationChannel(
   'high_importance_channel', // id
   'high_importance_notification', // title
@@ -61,102 +60,29 @@ const AndroidNotificationChannel channel = AndroidNotificationChannel(
   importance: Importance.high,
 );
 
-
-
 void main() async { //시작점
-
   print("채널! = =$channel");
   print("!!!RUN APP!!!");
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   // initializeNotification();
   // FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
   sendToken(); // 토큰 받아서 서버에 전송
-
   final myToken = await FirebaseMessaging.instance.getToken();
   print("나의 토큰: $myToken");
-
   // FirebaseMessaging.instance.requestPermission( //푸시 알림 토스트
   //   badge: true,
   //   alert: true,
   //   sound: true,
   // );
-
   PackageInfo packageInfo = await PackageInfo.fromPlatform();
   String appVersion = packageInfo.version;
 
   print("###앱 버전 = $appVersion");
   // await flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(channel);
 
-  // FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-  //   String url = message.data['sequence'];
-  //
-  //   if (url != null) {
-  //     print('Message also contained a notification: ${message.notification}');
-  //     flutterLocalNotificationsPlugin.show(
-  //         message.hashCode,
-  //         message.notification?.title,
-  //         message.notification?.body,
-  //         NotificationDetails(
-  //             // android: AndroidNotificationDetails(
-  //             //   'high_importance_channel',
-  //             //   'high_importance_notification',
-  //             //   // channelDescription: channel.description,
-  //             //   icon: '@mipmap/ic_launcher',
-  //             // ),
-  //          ));
-  //
-  //   }
-  // });
-
-  // FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
-  //   // save token to server
-  // });
   runApp(MyApp());
-
 }
-
-
-
-
-// void backgroundHandler(NotificationResponse details) {}
-
-
-// Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-//   // If you're going to use other Firebase services in the background, such as Firestore,
-//   // make sure you call `initializeApp` before using other Firebase services.
-//
-//   print("_firebaseMessagingBackgroundHandler");
-//   print("백그라운드 메시지 처리.. ${message.notification!.body!}");
-//   print("백그라운드 데이터 처리 ${message.data}");
-//
-//   await Firebase.initializeApp();
-//   // 백그라운드에서 메세지 처리
-//   flutterLocalNotificationsPlugin.show(
-//       message.notification.hashCode,
-//       message.notification!.title,
-//       message.notification!.body,
-//       NotificationDetails(
-//         android: AndroidNotificationDetails(
-//           channel.id, channel.name,
-//           // TODO add a proper drawable resource to android, for now using
-//           //      one that already exists in example app.
-//           icon: message.notification!.android!.smallIcon,
-//         ),
-//       ));
-//
-//   print('Handling a background message ${message.messageId}');
-//
-// }
-
-// const AndroidNotificationChannel channel = AndroidNotificationChannel(
-//   'high_importance_channel', // id
-//   'High Importance Notifications', // title
-//   importance: Importance.max,
-// );
-
-
 
 void sendToken() async { // 토큰 발송
 
@@ -168,7 +94,7 @@ void sendToken() async { // 토큰 발송
   const token = "X%2FWnoeM%2BhLdu9VP7ncdF5A%3D%3D";
   // The below request is the same as above.
   response = await dio.get(
-    'https://www.kaltour.com/API/WebPush/call',
+    'https://www.kaltour.com/API/WebPush/call',//
     queryParameters: {
       // "TOK": myToken,
       "TYP": "M",
@@ -193,14 +119,12 @@ class MyApp extends StatelessWidget { //메인 함수에서 실행되는 첫번�
     //     InitializationSettings(android: initialzationsettingsAndroid);
     //
     // flutterLocalNotificationsPlugin.initialize(initializationSettings);
-
     return MaterialApp(
       // navigatorKey: GlobalVariable.navState,
       debugShowCheckedModeBanner: true, //디버깅시 띠 가리기 (fasle일때 가려짐)
       home: MyWebView(),
     );
   }
-
 }
 
 void _handleMessageOpenedApp(RemoteMessage message, BuildContext context) { //백그라운드에서 푸시 클릭시 작동되는 함수
@@ -230,7 +154,7 @@ class MyWebView extends StatefulWidget {
 class _MyWebViewState extends State<MyWebView> {
   // static const platform = MethodChannel('fcm_default_channel')
   double progress = 0;
-  Uri myUrl = Uri.parse("https://m.kaltour.com/");
+  // Uri myUrl = Uri.parse("https://qa-m.kaltour.com/");
 
 
 
@@ -248,9 +172,8 @@ class _MyWebViewState extends State<MyWebView> {
       print("푸시 알림이 허용되었습니다");
       bool isPromoAllowed = await _isPromotionalAllowed();
       if(!isPromoAllowed) {
-        _showPromotionalAlert();
+        // _showPromotionalAlert();
       }
-
 
     } else if (settings.authorizationStatus == AuthorizationStatus.denied) {
       // Fluttertoast.showToast(msg: '임시 푸시 알림이 거부되었습니다');
@@ -280,7 +203,6 @@ class _MyWebViewState extends State<MyWebView> {
       android: AndroidInitializationSettings("@mipmap/ic_launcher"),
     ));
 
-
   }
 
   Future<bool> _goBack(BuildContext context) async{
@@ -299,7 +221,9 @@ class _MyWebViewState extends State<MyWebView> {
         useShouldOverrideUrlLoading: true, // URL 로딩 제어
         mediaPlaybackRequiresUserGesture: false, // 미디어 자동 재생
         javaScriptEnabled: true, // 자바스크립트 실행 여부
-        javaScriptCanOpenWindowsAutomatically: true, //
+        javaScriptCanOpenWindowsAutomatically: true,
+
+
       ),
       android: AndroidInAppWebViewOptions(
         useHybridComposition: true,
@@ -310,7 +234,8 @@ class _MyWebViewState extends State<MyWebView> {
     RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
 
     if (initialMessage != null){
-      // Fluttertoast.showToast(msg: "$initialMessage");
+      var now = DateTime.now();
+      Fluttertoast.showToast(msg: "$initialMessage, $now");
 
       _handleMessage(initialMessage);
     }
@@ -342,8 +267,6 @@ class _MyWebViewState extends State<MyWebView> {
     }else{
       print("url못받음");
     }
-
-
   }
   @override
   void initState() {
@@ -352,6 +275,8 @@ class _MyWebViewState extends State<MyWebView> {
     checkAppVersion();
     initializeNotification();
     _requestPermissions();
+
+
   }
 
   Future<void> checkAppVersion() async {
@@ -377,7 +302,6 @@ class _MyWebViewState extends State<MyWebView> {
       print("업데이트 안해도됨");
     }
   }
-
 
   Future<void> showUpdateDialog() {
     print("showUpdateDialog");
@@ -428,6 +352,7 @@ class _MyWebViewState extends State<MyWebView> {
 
   Future<void> _showPromotionalAlert() async {
     return showDialog<void>(
+      barrierDismissible: false,
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
@@ -465,7 +390,6 @@ class _MyWebViewState extends State<MyWebView> {
                     fontWeight: FontWeight.bold,
                   color: Colors.black
                 ),
-
               ),
             ),
           ],
@@ -488,20 +412,33 @@ class _MyWebViewState extends State<MyWebView> {
   Widget build(BuildContext context) {
     _configureFirebaseMessaging(context);
     return Scaffold(
+      appBar:AppBar(
+        title: Text("한진관광 LIVE"),
+      ),
       body: SafeArea(
+
         child: WillPopScope (
           onWillPop: () => _goBack(context),
           child: Column(children:<Widget> [
             Expanded(child: Stack(children: [
               InAppWebView(
+
                 initialUrlRequest: URLRequest(url: myUrl) ,
                 initialOptions: InAppWebViewGroupOptions(
                   crossPlatform: InAppWebViewOptions(
-                    useShouldOverrideUrlLoading: true
+                      userAgent: 'APP_WISHROOM_IOS',
+                      useShouldOverrideUrlLoading: true
+
                   ),
                   android: AndroidInAppWebViewOptions(
                     mixedContentMode: AndroidMixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW
-                  )
+                  ),
+
+
+                  // android: AndroidInAppWebViewOptions(
+                  //   mixedContentMode: AndroidMixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW
+                  // )
+
                 ),
                 shouldOverrideUrlLoading:(controller, navigationAction) async {
 
@@ -550,6 +487,23 @@ class _MyWebViewState extends State<MyWebView> {
                 onLoadStart: (InAppWebViewController controller, uri) {
                   print("onLoadStart");
                   setState(() {myUrl = uri!;});
+                  //
+                  // webViewController!.addJavaScriptHandler(
+                  //   handlerName: 'appView',
+                  //   callback: (args) {
+                  //     // args는 JavaScript에서 전달된 인수입니다.
+                  //     print("JavaScript에서 받은 데이터: $args");
+                  //     // SecondView();
+                  //     // Flutter에서의 처리 로직
+                  //     // return {SecondView};
+                  //
+                  //     Navigator.of(context).push(MaterialPageRoute(
+                  //         builder: (context) => WebBridge())
+                  //     );
+                  //   },
+                  // );
+
+
                 },
                 onLoadStop: (InAppWebViewController controller, uri) {
                   setState(() {myUrl = uri!;});
@@ -563,11 +517,42 @@ class _MyWebViewState extends State<MyWebView> {
                       resources: resources,
                       action: PermissionRequestResponseAction.GRANT);
                 },
-                onWebViewCreated: (InAppWebViewController controller) {
-                  print("onWebViewCreated");
+                onWebViewCreated: ( controller) {
                   webViewController = controller;
+
+                  webViewController!.addJavaScriptHandler(
+                    handlerName: 'appView',
+                    callback: (args) {
+                      // args는 JavaScript에서 전달된 인수입니다.
+                      print("JavaScript에서 받은 데이터: $args");
+                      // SecondView();
+                      // Flutter에서의 처리 로직
+                      // return {SecondView};
+
+                      Navigator.of(context).push(MaterialPageRoute(
+                          builder: (context) => WebBridge()));
+                    },
+                  );
+
+                  // webViewController!.addJavaScriptHandler(
+                  //   handlerName: 'appView',
+                  //   callback: (args) {
+                  //     // args는 JavaScript에서 전달된 인수입니다.
+                  //     print("JavaScript에서 받은 데이터: $args");
+                  //     // SecondView();
+                  //     // Flutter에서의 처리 로직
+                  //     // return {SecondView};
+                  //
+                  //     Navigator.of(context).push(MaterialPageRoute(
+                  //         builder: (context) => WebBridge())
+                  //     );
+                  //   },
+                  // );
+
                 },
-              )
+              ),
+
+
             ],))
           ],),
         ),
