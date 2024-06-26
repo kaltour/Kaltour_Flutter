@@ -1,12 +1,15 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-
-
+// import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
 class PermissionScreen extends StatefulWidget {
   final bool adAllowPush;
   String notiPermissiontime;
+
 
   PermissionScreen(
       {required this.adAllowPush, required this.notiPermissiontime});
@@ -17,9 +20,13 @@ class PermissionScreen extends StatefulWidget {
 
 class _PermissionScreenState extends State<PermissionScreen> {
   late bool _adAllowPush;
+  late DateTime currentDateTime = DateTime.now();
+  DateTime? savedTime;
 
-  PermissionStatus _permissionStatus = PermissionStatus.granted;
-  //
+
+  bool _isNotificationEnabled = false;
+  PermissionStatus _permissionStatus = PermissionStatus.denied;
+
   // bool _isNotificationEnabled = false;
   // bool _isAnotherFeatureEnabled = false;
 
@@ -28,20 +35,27 @@ class _PermissionScreenState extends State<PermissionScreen> {
     super.initState();
     // _checkPermissionStatus();
     //
-    // _checkNotificationPermission();
+    _checkNotificationPermission();
     _adAllowPush = widget.adAllowPush;
-
   }
 
   void _toggleSwitch(bool value) {
+    //광고성
+
     setState(() {
       _adAllowPush = value;
     });
 
-    if (_adAllowPush) {
-      _showSnackBar('스위치가 켜졌습니다');
+    if (_adAllowPush) { //광고성
+      // _showSnackBar('광고성 켜졌습니다');
+      _showAlert(context);
+      FirebaseMessaging.instance.getToken();
+      print("Firebase 토큰 생성됨");
     } else {
-      _showSnackBar('스위치가 꺼졌습니다');
+      // _showSnackBar('광고성 꺼졌습니다');
+      print("Firebase 토큰 삭제됨");
+      _showAlert(context);
+      FirebaseMessaging.instance.deleteToken();
     }
   }
 
@@ -55,93 +69,225 @@ class _PermissionScreenState extends State<PermissionScreen> {
   }
 
 
+  // void _requestPermission() async {
+  //   if (_permissionStatus.isGranted || _permissionStatus.isDenied) {
+  //     PermissionStatus status = await Permission.notification.request();
+  //     setState(() {
+  //       _permissionStatus = status;
+  //     });
+  //   }
+  // }
 
-  void _requestPermission() async {
-    if (_permissionStatus.isGranted || _permissionStatus.isDenied) {
-      PermissionStatus status = await Permission.notification.request();
-      setState(() {
-        _permissionStatus = status;
-      });
+  void _checkNotificationPermission() async {
+    final status = await Permission.notification.status;
+    setState(() {
+      _permissionStatus = status;
+      _isNotificationEnabled = _permissionStatus == PermissionStatus.granted;
+    });
+  }
+
+  void _requestNotificationPermission() async {
+    final status = await Permission.notification.request();
+    setState(() {
+      _permissionStatus = status;
+      _isNotificationEnabled = _permissionStatus == PermissionStatus.granted;
+    });
+  }
+
+
+  void _showAlert(BuildContext context){
+    showCupertinoDialog(context: context,
+        builder: (context) => CupertinoAlertDialog (
+          // title: Text("한진관광",
+          //   style: TextStyle(
+          //     color: Colors.blue
+          //   ),
+          // ),
+
+          content: Text("이벤트 및 마케팅 정보 수신에 \n ${_adAllowPush ? "동의":"거부"}하였습니다. ${currentDateTime.year}년 ${currentDateTime.month}월 ${currentDateTime.day}일"),
+          actions:<Widget> [
+            CupertinoDialogAction(
+              child: Text("확인",
+                style: TextStyle(
+
+                  color: Colors.blue,
+                  fontWeight: FontWeight.w500
+
+
+                ),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+
+            ),
+            // CupertinoDialogAction(child: Text("cancel"),
+            //
+            //   onPressed: () {
+            //   print("취소");
+            //   Navigator.of(context).pop();
+            //   },
+            // )
+          ],
+
+        )
+    );
+  }
+
+
+
+
+  void _systemToggleNotification(bool value) {
+    //시스템 푸시
+    if (_permissionStatus == PermissionStatus.denied) {
+      print("시스템 알림 켜기");
+      _requestNotificationPermission();
+      openAppSettings();
+      // return;
+    } else {
+      print("시스템 알림 끄기");
+      // openAppSettings();
+
     }
+
+    setState(() {
+      _isNotificationEnabled = value;
+    });
+
+
+    String message = value ? '알림이 켜졌습니다' : '알림이 꺼졌습니다';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: Duration(seconds: 1),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-
     bool isSystemPermissionOff =
-        _permissionStatus.isDenied || _permissionStatus.isPermanentlyDenied;
+        _permissionStatus.isGranted || _permissionStatus.isPermanentlyDenied;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('한진관광 푸시 알림 설정'),
+        title: Text(
+          '한진관광 푸시 알림 설정',
+          style: TextStyle(
+            fontFamily: 'Roboto',
+            fontSize: 17,
+          ),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+
+        ),
       ),
       body: Center(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          // mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            SizedBox(height: 30,),
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                Text(
-                  '시스템 알림 권한',
-                  style: TextStyle(fontSize: 16),
+
+                SizedBox(width: 20),
+
+                // Text(
+                //   '시스템 알림 권한',
+                //   style: TextStyle(fontSize: 16),
+                // ),
+                Text(_permissionStatus == PermissionStatus.granted
+                    ? '시스템 알림'
+                    : '시스템 알림',
+                  style: TextStyle(
+                      fontSize: 17.0,
+                      fontWeight: FontWeight.w600
+                    // fontWeight: FontWeight.w400
+                  ),
                 ),
-                CupertinoSwitch(
-                  value: _permissionStatus.isGranted,
-                  onChanged: isSystemPermissionOff
-                      ? (newValue) {
-                          print("System notification permission is off.");
+                  SizedBox(width: 150),
+                  Visibility(
+                      visible: _permissionStatus.isGranted == false,
+                      child: CupertinoButton(
+                        // color: CupertinoColors.activeBlue,
+                        onPressed: () {
+                          print("쿠퍼티노 버튼");
                           openAppSettings();
-                        }
-                      : (newValue) async {
-                    print("뉴뱔류");
-                          if (newValue) {
-                            await Permission.notification.request();
-                            print("if문");
-                          } else {
-                            print("else문");
-                            // await Permission.notification.revoke();
-                          }
-                          PermissionStatus status =
-                              await Permission.notification.status;
-                          setState(() {
-                            _permissionStatus = status;
-                          });
                         },
-                  activeColor: CupertinoColors.activeBlue,
-                  // activeTrackColor: Colors.lightBlueAccent,
-                  // inactiveThumbColor: Colors.grey,
-                  // inactiveTrackColor: Colors.grey[300],
-                ),
+                        child: Text("설정하기",
+                          style: TextStyle(
+                              fontSize: 15.0,
+                              color: Colors.blue
+                          ),
+                        ),
+                      ),
+                  ),
+
+                // SizedBox(width: 100),
+                // CupertinoSwitch(
+                //   value: _isNotificationEnabled,
+                //   onChanged: _systemToggleNotification,
+                //   activeColor: CupertinoColors.activeBlue,
+                //
+                //   // activeTrackColor: Colors.lightBlueAccent,
+                //   // inactiveThumbColor: Colors.grey,
+                //   // inactiveTrackColor: Colors.grey[300],
+                // ),
+
 
               ],
             ),
+            Container(width: 300,
+                child: Divider(color: Colors.grey, thickness: 0.5)),
 
             // SizedBox(width: 10), // Text와 Switch 사이의 간격
 
-            if (_permissionStatus.isGranted)
+            // if (_permissionStatus.isGranted)
               Visibility(
                   visible: _permissionStatus.isGranted == true,
-                  child: Row(
+                  child: Center(
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            SizedBox(width: 40),
+                            Text("마케팅 정보 알림",
 
-                    children: [
-                      Text("광고성 동의?"),
-                      CupertinoSwitch(
-                        value: _adAllowPush,
-                        onChanged: _toggleSwitch,
-                        activeColor: Colors.blue,
+                              style: TextStyle(
+                                fontSize: 17.0,
+                                // fontWeight: FontWeight.w400
+                              ),
+                            ),
+                            SizedBox(width: 100),
+                            CupertinoSwitch(
+                              value: _adAllowPush,
+                              onChanged: _toggleSwitch,
+                              activeColor: CupertinoColors.activeBlue,
 
-                      ),
-                      Text(
-                        _adAllowPush ? "허용" : "비허용"
-                      )
+                            ),
 
-                    ],
+                            // Text(
+                            //     _adAllowPush ? "허용" : "비허용"
+                            // )
+
+                          ],
+                        ),
+
+
+                      ],
+                    ),
                   )
               ),
 
-            SizedBox(width: 10),
+            SizedBox(width: 20),
           ],
+
         ),
       ),
     );

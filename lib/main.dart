@@ -3,6 +3,7 @@ import 'dart:ffi';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:kaltour_flutter/View/PermissionScreen.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -32,6 +33,7 @@ import 'View/PushedWebView.dart';
 import 'Utilities/sendToken.dart';
 import 'View/MainWebView.dart';
 import 'Utilities/initializeNotification.dart';
+import 'Utilities/checkNotificationPermission.dart';
 
 const platform = MethodChannel('androidIntent');
 // FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -66,12 +68,12 @@ const AndroidNotificationChannel channel = AndroidNotificationChannel(
   importance: Importance.high,
 );
 
+
 void main() async { //시작점
   print("채널! = =$channel");
   print("!!!RUN APP!!!");
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  // initializeNotification();
   // FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   sendToken(); // 토큰 받아서 서버에 전송
   final myToken = await FirebaseMessaging.instance.getToken();
@@ -87,10 +89,11 @@ void main() async { //시작점
   print("###앱 버전 = $appVersion");
   // await flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(channel);
 
-  initializeNotification();
+  checkNotificationPermission(); // 시스템 푸시 허용 확인 함수
+  initializeNotification(); // 노티 초기화 함수
+
   runApp(MyApp());
 }
-
 
 
 // void sendToken() async { // 토큰 발송
@@ -125,11 +128,10 @@ class MyApp extends StatelessWidget { //메인 함수에서 실행되는 첫번�
   Widget build(BuildContext context) {
 
 
-
     return MaterialApp(
       // navigatorKey: GlobalVariable.navState,
-      debugShowCheckedModeBanner: true, //디버깅시 띠 가리기 (fasle일때 가려짐)
-      home: MainWebView(),
+      debugShowCheckedModeBanner: true, //디버깅시 띠 가리기 (false일때 가려짐)
+      home: MainWebView(), // 스크린
     );
   }
 }

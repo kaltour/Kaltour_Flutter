@@ -3,6 +3,7 @@ import 'dart:ffi';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:kaltour_flutter/View/PermissionScreen.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -43,87 +44,11 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print("백그라운드 메시지 처리.. ${message.notification!.body!}");
   print("백그라운드 데이터 키 메시지 처리.. ${message.data.keys}");
   print("백그라운드 데이터 밸류 메시지 처리.. ${message.data.values}");
-  // flutterLocalNotificationsPlugin.show(
-  //   message.notification.hashCode,
-  //   message.notification!.title,
-  //   message.notification!.body,
-  //   NotificationDetails(
-  //     android: AndroidNotificationDetails(
-  //       'high_importance_channel', 'high_importance_notification',
-  //       icon: message.notification!.android!.smallIcon,
-  //
-  //       // channel.id,
-  //       // 'high_importance_notification',
-  //       // importance: Importance.max,
-  //       // icon: message.notification!.android!.smallIcon,
-  //     )
-  //   )
-  // );
+
 }
 
 
-Future<void> _showPromotionalAlert(BuildContext context) async {
-  return showDialog<void>(
-    barrierDismissible: false,
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text('앱 알림 (선택)'),
-        content: Text('광고성 앱 푸시를 수신하겠습니까?'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              // _setPromotionalAllowed(false);
 
-              FirebaseMessaging.instance.deleteToken();
-              print("토큰 삭제됨");
-              var now = new DateTime.now(); //반드시 다른 함수에서 해야함, Mypage같은 클래스에서는 사용 불가능
-              String formatDate = DateFormat('yy/MM/dd - HH:mm:ss').format(now); //
-              Fluttertoast.showToast(msg: "$formatDate에 광고성 알럿 거부되었습니다.",
-                  fontSize: 16.0
-                // fontSize: 16.0
-              );
-
-              Navigator.of(context).pop();
-            },
-            child: Text(
-              '아니오',
-              style: TextStyle(
-                  color: Colors.black
-              ),
-
-            ),
-          ),
-          TextButton(//허용시
-            onPressed: () {
-              // _setPromotionalAllowed(true);
-              Navigator.of(context).pop();
-              // adAllowPush = true;
-              var now = new DateTime.now(); //반드시 다른 함수에서 해야함, Mypage같은 클래스에서는 사용 불가능
-              String formatDate = DateFormat('yy/MM/dd - HH:mm:ss').format(now); //
-              Fluttertoast.showToast(msg: "$formatDate에 광고성 알럿 허용되었습니다.",
-                  fontSize: 16.0
-              );
-
-            },
-            style: const ButtonStyle(
-              backgroundColor: MaterialStatePropertyAll<Color>(
-                  Color.fromRGBO(1, 123, 178, 0.6)
-              ),
-            ),
-            child: Text(
-              '네',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black
-              ),
-            ),
-          ),
-        ],
-      );
-    },
-  );
-}
 
 
 
@@ -138,7 +63,7 @@ class _MainWebViewState extends State<MainWebView> {
   // static const platform = MethodChannel('fcm_default_channel')
   double progress = 0;
   DateTime now = DateTime.now();
-  // bool adAllowPush = false; //광고성 푸시 허용/비허용 변수
+  bool adAllowPush = false; //광고성 푸시 허용/비허용 변수
   // bool _notificationEnabled = true;
 
   late final InAppWebViewController webViewController;
@@ -152,7 +77,68 @@ class _MainWebViewState extends State<MainWebView> {
     // _showPromotionalAlert();
     _requestPermissions();
   }
+  Future<void> _showPromotionalAlert(BuildContext context) async {
+    return showDialog<void>(
+      barrierDismissible: false,
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('앱 알림 (선택)'),
+          content: Text('광고성 앱 푸시를 수신하겠습니까?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                // _setPromotionalAllowed(false);
 
+                FirebaseMessaging.instance.deleteToken();
+                print("토큰 삭제됨");
+                var now = new DateTime.now(); //반드시 다른 함수에서 해야함, Mypage같은 클래스에서는 사용 불가능
+                String formatDate = DateFormat('yy/MM/dd - HH:mm:ss').format(now); //
+                Fluttertoast.showToast(msg: "$formatDate에 광고성 알럿 거부되었습니다.",
+                    fontSize: 16.0
+                  // fontSize: 16.0
+                );
+
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                '아니오',
+                style: TextStyle(
+                    color: Colors.black
+                ),
+
+              ),
+            ),
+            TextButton(//허용시
+              onPressed: () {
+                // _setPromotionalAllowed(true);
+                Navigator.of(context).pop();
+                adAllowPush = true;
+                var now = new DateTime.now(); //반드시 다른 함수에서 해야함, Mypage같은 클래스에서는 사용 불가능
+                String formatDate = DateFormat('yy/MM/dd - HH:mm:ss').format(now); //
+                Fluttertoast.showToast(msg: "$formatDate에 광고성 알럿 허용되었습니다.",
+                    fontSize: 16.0
+                );
+
+              },
+              style: const ButtonStyle(
+                backgroundColor: MaterialStatePropertyAll<Color>(
+                    Color.fromRGBO(1, 123, 178, 0.6)
+                ),
+              ),
+              child: Text(
+                '네',
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
   void check_time(BuildContext context){ //context는 Snackbar용, 다른 방식으로 출력할거면 필요없음.
     var now = new DateTime.now(); //반드시 다른 함수에서 해야함, Mypage같은 클래스에서는 사용 불가능
     String formatDate = DateFormat('yy/MM/dd - HH:mm:ss').format(now); //format변경
@@ -392,9 +378,9 @@ class _MainWebViewState extends State<MainWebView> {
   Widget build(BuildContext context) {
     // _configureFirebaseMessaging(context);
     return Scaffold(
-      appBar:AppBar(
-        title: Text("한진관광 LIVE"),
-      ),
+      // appBar:AppBar(
+      //   title: Text("한진관광 LIVE"),
+      // ),
       body: SafeArea(
 
         child: WillPopScope (
@@ -508,8 +494,13 @@ class _MainWebViewState extends State<MainWebView> {
                       // Flutter에서의 처리 로직
                       // return {SecondView};
 
+                      // Navigator.of(context).push(MaterialPageRoute(
+                      //     builder: (context) => WebBridgeView(data: adAllowPush , time:"$now")));
+                      // Navigator.of(context).push(MaterialPageRoute(
+                      //     builder: (context) => PermissionScreen(notiPermission:adAllowPush, notiPermissiontime:"$now")));
+
                       Navigator.of(context).push(MaterialPageRoute(
-                          builder: (context) => WebBridgeView(data: true, time: "time")));
+                          builder: (context) => PermissionScreen(adAllowPush:adAllowPush, notiPermissiontime:"$now")));
                     },
                   );
 
