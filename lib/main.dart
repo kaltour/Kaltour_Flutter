@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:kaltour_flutter/View/PermissionScreen.dart';
+import 'package:kaltour_flutter/Test/TestView.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -29,11 +30,12 @@ import 'package:intl/intl.dart';
 import 'View/WebBridgeView.dart';
 import 'package:flutter/cupertino.dart';
 import 'Model/RealUrl.dart';
-import 'View/PushedWebView.dart';
 import 'Utilities/sendToken.dart';
 import 'View/MainWebView.dart';
 import 'Utilities/initializeNotification.dart';
 import 'Utilities/checkNotificationPermission.dart';
+import 'View/PushedWebView.dart';
+
 
 const platform = MethodChannel('androidIntent');
 // FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -76,8 +78,8 @@ void main() async { //시작점
   await Firebase.initializeApp();
   // FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   sendToken(); // 토큰 받아서 서버에 전송
-  final myToken = await FirebaseMessaging.instance.getToken();
-  print("나의 토큰: $myToken");
+  // final myToken = await FirebaseMessaging.instance.getToken();
+  // print("나의 토큰: $myToken");
   // FirebaseMessaging.instance.requestPermission( //푸시 알림 토스트
   //   badge: true,
   //   alert: true,
@@ -91,42 +93,13 @@ void main() async { //시작점
 
   checkNotificationPermission(); // 시스템 푸시 허용 확인 함수
   initializeNotification(); // 노티 초기화 함수
-
   runApp(MyApp());
 }
 
-
-// void sendToken() async { // 토큰 발송
-//
-//   final dio = Dio();
-//   Response response;
-//
-//   final myToken = await FirebaseMessaging.instance.getToken();
-//
-//   const token = "X%2FWnoeM%2BhLdu9VP7ncdF5A%3D%3D";
-//   // The below request is the same as above.
-//   response = await dio.get(
-//     'https://www.kaltour.com/API/WebPush/call',//
-//     queryParameters: {
-//       // "TOK": myToken,
-//       "TYP": "M",
-//       "GNT": "",
-//       "CID": "",
-//       "URL": "gohanway.kaltour.com",
-//       "PTH": "AOS",
-//       "AK": token
-//     },
-//   );
-//   print("리스폰스");
-//   print(response.data.toString());
-// }
-
 class MyApp extends StatelessWidget { //메인 함수에서 실행되는 첫번째 뷰
-
 
   @override
   Widget build(BuildContext context) {
-
 
     return MaterialApp(
       // navigatorKey: GlobalVariable.navState,

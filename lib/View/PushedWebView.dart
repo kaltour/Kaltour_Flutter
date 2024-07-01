@@ -38,11 +38,11 @@ class _PushedWebViewState extends State<PushedWebView> {
 
   Future<String> getAppUrl(String url) async {//앱 URL 받기
     if (Platform.isAndroid) {
-      //print("안드로이드");
+      print("안드로이드");
       return await platform
           .invokeMethod('getAppUrl', <String, Object>{'url': url});
     } else {
-      //print("ios");
+      print("ios");
       return url;
     }
   }

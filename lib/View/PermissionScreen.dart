@@ -3,9 +3,11 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-
-// import 'package:google_fonts/google_fonts.dart';
+import 'dart:io' show Platform;
+import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+
 
 class PermissionScreen extends StatefulWidget {
   final bool adAllowPush;
@@ -21,9 +23,11 @@ class PermissionScreen extends StatefulWidget {
 class _PermissionScreenState extends State<PermissionScreen> {
   late bool _adAllowPush;
   late DateTime currentDateTime = DateTime.now();
-
+  bool isSwitchEnabled = false;
   bool _isNotificationEnabled = false;
   PermissionStatus _permissionStatus = PermissionStatus.denied;
+  String? _token;
+
 
   @override
   void initState() {
@@ -31,11 +35,21 @@ class _PermissionScreenState extends State<PermissionScreen> {
     // _checkPermissionStatus();
     _checkNotificationPermission();
     _adAllowPush = widget.adAllowPush;
-  }
+    checkPermissionStatus();
+    _loadSwitchValue();
 
+
+  }
+  void _getToken() async {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+    String? token = await messaging.getToken();
+    setState(() {
+      _token = token;
+    });
+    print("FCM Token(토큰) : $_token");
+  }
   void _toggleSwitch(bool value) {
     //광고성
-
     setState(() {
       _adAllowPush = value;
     });
@@ -44,23 +58,25 @@ class _PermissionScreenState extends State<PermissionScreen> {
       //광고성
       // _showSnackBar('광고성 켜졌습니다');
       _showAlert(context);
-      FirebaseMessaging.instance.getToken();
-      print("Firebase 토큰 생성됨");
+      // FirebaseMessaging.instance.getToken();
+
+      _getToken();
+
+      setState(() {
+        _adAllowPush = true;
+      });
+
     } else {
       // _showSnackBar('광고성 꺼졌습니다');
       print("Firebase 토큰 삭제됨");
       _showAlert(context);
       FirebaseMessaging.instance.deleteToken();
-    }
-  }
 
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: Duration(seconds: 1),
-      ),
-    );
+
+      setState(() {
+        _adAllowPush = false;
+      });
+    }
   }
 
   // void _requestPermission() async {
@@ -71,6 +87,19 @@ class _PermissionScreenState extends State<PermissionScreen> {
   //     });
   //   }
   // }
+
+  _loadSwitchValue() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _adAllowPush = (prefs.getBool('adAllowPush') ?? false);
+    });
+  }
+  _saveSwitchValue(bool value) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setBool('adAllowPush', value);
+  }
+
+
 
   void _checkNotificationPermission() async {
     final status = await Permission.notification.status;
@@ -85,6 +114,13 @@ class _PermissionScreenState extends State<PermissionScreen> {
     setState(() {
       _permissionStatus = status;
       _isNotificationEnabled = _permissionStatus == PermissionStatus.granted;
+    });
+  }
+  void checkPermissionStatus() async {
+    PermissionStatus pushStatus = await Permission.notification.status;
+    setState(() {
+      // 푸시 권한이 거부된 경우 스위치를 비활성화
+      isSwitchEnabled = pushStatus != PermissionStatus.denied;
     });
   }
 
@@ -109,6 +145,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                   ),
                   onPressed: () {
                     Navigator.of(context).pop();
+
                   },
                 ),
                 // CupertinoDialogAction(child: Text("cancel"),
@@ -170,10 +207,9 @@ class _PermissionScreenState extends State<PermissionScreen> {
           },
         ),
       ),
-      body: Column(
-          children: [
+      body: Column(children: [
         Container(
-          padding: EdgeInsets.all(14.0),
+          padding: EdgeInsets.all(18.0),
           child: Row(
             children: [
               Text(
@@ -184,61 +220,71 @@ class _PermissionScreenState extends State<PermissionScreen> {
                     // fontWeight: FontWeight.w400
                     ),
               ),
+              Spacer(),
               Visibility(
                 visible: _permissionStatus.isGranted == false,
                 child: CupertinoButton(
                   // color: CupertinoColors.activeBlue,
                   onPressed: () {
                     openAppSettings();
+                    if(Platform.isIOS) {
+                      print("ios에서");
+                    }
                   },
                   child: Text(
                     "설정하기",
-                    style: TextStyle(fontSize: 15.0, color: Colors.blue),
+                    style: TextStyle(fontSize: 18.0, color: Colors.blue,
+                      fontWeight: FontWeight.bold
+                    ),
                   ),
                 ),
               ),
-
             ],
           ),
         ),
         Container(
           child: Divider(
             color: Colors.grey,
-              thickness: 0.5,
+            thickness: 0.5,
           ),
-
-
-
         ),
         Container(
-          padding: EdgeInsets.only(left: 22,right: 18,top: 19,bottom: 18),
+          padding: EdgeInsets.only(left: 24, right: 18, top: 19, bottom: 18),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Visibility(
-                visible: _permissionStatus.isGranted == true,
-                child: Row(
-                  children: [
-                    Text("마케팅 정보 알림",
-                        style: TextStyle(
-                          fontSize: 17.0,
-                        )),
-                    SizedBox(width: 150),
-                    CupertinoSwitch(
-                      value: _adAllowPush,
-                      onChanged: _toggleSwitch,
-                      activeColor: CupertinoColors.activeBlue,
-                    )
-                  ],
-                ),
-              )
+              Row(
+                children: [
+                  Text("특가 상품 및 이벤트 정보 알림",
+                      style: TextStyle(
+                        fontSize: 17.0,
+                      )),
+                  SizedBox(width: 70),
+                  CupertinoSwitch(
+                    value: _adAllowPush == true,
+                    onChanged: isSwitchEnabled ? (value) {
+                      // _adAllowPush = value;
+                      setState(() {
+                        _adAllowPush = value;
+                        _toggleSwitch(value);
+                        _adAllowPush = value;
+                      });
+                      _saveSwitchValue(value);
+                    } : null,
+                    activeColor: Colors.blue,
+                    trackColor: Colors.grey,
+                    // activeColor: CupertinoColors.activeBlue,
+                  ),
+                ],
+              ),
+              // Visibility(
+              //   visible: _permissionStatus.isGranted == true,
+              //
+              // )
             ],
           ),
-        )
-      ]
-
-
-          ),
+        ),
+      ]),
     );
   }
 }

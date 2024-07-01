@@ -7,6 +7,7 @@ import 'package:kaltour_flutter/View/PermissionScreen.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'package:firebase_core/firebase_core.dart';
+
 // import 'firebase_options.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:dio/dio.dart';
@@ -14,6 +15,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'dart:io';
+
 // import 'package:get/get.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
@@ -25,35 +27,30 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timer_builder/timer_builder.dart';
 import 'package:intl/intl.dart';
-import 'package:http/http.dart'as http;
+import 'package:http/http.dart' as http;
 import 'package:flutter/cupertino.dart';
 import 'package:kaltour_flutter/main.dart';
 import 'package:kaltour_flutter/Utilities/requestPermissions.dart';
 import 'package:kaltour_flutter/Model/RealUrl.dart';
 import 'package:kaltour_flutter/View/WebBridgeView.dart';
-import 'package:kaltour_flutter/View/PushedWebView.dart';
 import 'package:kaltour_flutter/Utilities/requestPermissions.dart';
-
-
+import 'package:kaltour_flutter/View/PushedWebView.dart';
+import 'package:webview_cookie_manager/webview_cookie_manager.dart';
+import 'package:cookie_jar/cookie_jar.dart';
+import 'package:path_provider/path_provider.dart';
 
 const platform = MethodChannel('androidIntent');
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-
   print("백그라운드 메시지 처리.. ${message.notification!.body!}");
   print("백그라운드 데이터 키 메시지 처리.. ${message.data.keys}");
   print("백그라운드 데이터 밸류 메시지 처리.. ${message.data.values}");
-
 }
-
-
-
-
-
 
 class MainWebView extends StatefulWidget {
   const MainWebView({super.key});
+
   @override
   State<MainWebView> createState() => _MainWebViewState();
 }
@@ -65,73 +62,120 @@ class _MainWebViewState extends State<MainWebView> {
   DateTime now = DateTime.now();
   bool adAllowPush = false; //광고성 푸시 허용/비허용 변수
   // bool _notificationEnabled = true;
-
+  String? _token;
   late final InAppWebViewController webViewController;
+  // late WebViewController _controller;
+  String appUserAgent = "APP_WISHROOM_Android";
+  String webUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1";
+  final _cookieManager = WebViewCookieManager();
+  final CookieManager cookieManager = CookieManager.instance();
 
   @override
   void initState() {
     super.initState();
+    _requestPermissions();
+    print("MainWebView실행");
     setupInteractedMessage();
     checkAppVersion();
     initializeNotification();
+    _setCookies();
     // _showPromotionalAlert();
-    _requestPermissions();
   }
+
+  void _getCookies() async {
+    final cookies = await cookieManager.getCookies(url: Uri.parse('https://qa-m.kaltour.com/'));
+    print('Cookies for https://qa-m.kaltour.com/:');
+    cookies.forEach((cookie) {
+      print('Name: ${cookie.name}, Value: ${cookie.value}');
+    });
+  }
+
+  Future<void> _setCookies() async {
+    await _cookieManager.setCookie(
+      WebViewCookie(
+        name: 'appCookie',
+        value: 'isApp',
+        domain: '.kaltour.com/', // 도메인은 앞에 점을 붙여 서브도메인에서도 사용할 수 있게 설정
+        path: '/'
+      ),
+    );
+
+    print("setCookies");
+
+  }
+
   Future<void> _showPromotionalAlert(BuildContext context) async {
-    return showDialog<void>(
+    late DateTime currentDateTime = DateTime.now();
+    return showCupertinoDialog<void>(
       barrierDismissible: false,
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('앱 알림 (선택)'),
-          content: Text('광고성 앱 푸시를 수신하겠습니까?'),
+        return CupertinoAlertDialog(
+          // title: Text('앱 알림 (선택)'),
+          content: Text('특가 상품 및 이벤트 정보 알림을\n 수신하겠습니까?'),
           actions: [
-            TextButton(
+            CupertinoDialogAction(
               onPressed: () {
                 // _setPromotionalAllowed(false);
-
+                adAllowPush = false;
+                print("광고성 앱푸신 거부");
                 FirebaseMessaging.instance.deleteToken();
                 print("토큰 삭제됨");
-                var now = new DateTime.now(); //반드시 다른 함수에서 해야함, Mypage같은 클래스에서는 사용 불가능
-                String formatDate = DateFormat('yy/MM/dd - HH:mm:ss').format(now); //
-                Fluttertoast.showToast(msg: "$formatDate에 광고성 알럿 거부되었습니다.",
-                    fontSize: 16.0
-                  // fontSize: 16.0
-                );
+                var now = new DateTime
+                    .now(); //반드시 다른 함수에서 해야함, Mypage같은 클래스에서는 사용 불가능
+                String formatDate =
+                    DateFormat('yy/MM/dd - HH:mm:ss').format(now); //
+                Fluttertoast.showToast(
+                    msg:
+                        "${currentDateTime.year}년 ${currentDateTime.month}월 ${currentDateTime.day}일에 이벤트 정보 알림 수신을\n 거부하였습니다",
+                    fontSize: 12.0,
+                    backgroundColor: Colors.blue,
+                    textColor: Colors.white,
+                    toastLength: Toast.LENGTH_LONG,
+                    gravity: ToastGravity.TOP
+
+                    // fontSize: 16.0
+                    );
 
                 Navigator.of(context).pop();
               },
               child: Text(
                 '아니오',
-                style: TextStyle(
-                    color: Colors.black
-                ),
-
+                style: TextStyle(color: Colors.red),
               ),
             ),
-            TextButton(//허용시
+            CupertinoDialogAction( //허용시
+              //허용시
               onPressed: () {
                 // _setPromotionalAllowed(true);
                 Navigator.of(context).pop();
-                adAllowPush = true;
-                var now = new DateTime.now(); //반드시 다른 함수에서 해야함, Mypage같은 클래스에서는 사용 불가능
-                String formatDate = DateFormat('yy/MM/dd - HH:mm:ss').format(now); //
-                Fluttertoast.showToast(msg: "$formatDate에 광고성 알럿 허용되었습니다.",
-                    fontSize: 16.0
-                );
 
+                _getToken();
+                adAllowPush = true;
+                print("광고성 앱푸신 허용");
+                var now = new DateTime
+                    .now(); //반드시 다른 함수에서 해야함, Mypage같은 클래스에서는 사용 불가능
+                String formatDate =
+                    DateFormat('yy/MM/dd - HH:mm:ss').format(now); //
+                Fluttertoast.showToast(
+                    msg:
+                        "${currentDateTime.year}년 ${currentDateTime.month}월 ${currentDateTime.day}일에 이벤트 정보 알림 수신을\n 동의하였습니다 ",
+                    fontSize: 12.0,
+                    backgroundColor: Colors.blue,
+                    textColor: Colors.white,
+                    toastLength: Toast.LENGTH_LONG,
+                    gravity: ToastGravity.TOP);
               },
-              style: const ButtonStyle(
-                backgroundColor: MaterialStatePropertyAll<Color>(
-                    Color.fromRGBO(1, 123, 178, 0.6)
-                ),
-              ),
+              // style: const ButtonStyle(
+              //   backgroundColor: MaterialStatePropertyAll<Color>(
+              //       Color.fromRGBO(1, 123, 178, 0.6)
+              //   ),
+              // ),
               child: Text(
                 '네',
                 style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black
-                ),
+                    // fontWeight: FontWeight.bold,
+                    color: Colors.blue),
               ),
             ),
           ],
@@ -139,16 +183,27 @@ class _MainWebViewState extends State<MainWebView> {
       },
     );
   }
-  void check_time(BuildContext context){ //context는 Snackbar용, 다른 방식으로 출력할거면 필요없음.
-    var now = new DateTime.now(); //반드시 다른 함수에서 해야함, Mypage같은 클래스에서는 사용 불가능
-    String formatDate = DateFormat('yy/MM/dd - HH:mm:ss').format(now); //format변경
-    ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar( //출력용 snackbar
-          content: Text('$formatDate'),
-          duration: Duration(seconds: 20),
-        )
-    );
+
+  void _getToken() async {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+    String? token = await messaging.getToken();
+    setState(() {
+      _token = token;
+    });
+    print("FCM Token(토큰) : $_token");
   }
+
+  // void check_time(BuildContext context) {
+  //   //context는 Snackbar용, 다른 방식으로 출력할거면 필요없음.
+  //   var now = new DateTime.now(); //반드시 다른 함수에서 해야함, Mypage같은 클래스에서는 사용 불가능
+  //   String formatDate =
+  //       DateFormat('yy/MM/dd - HH:mm:ss').format(now); //format변경
+  //   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+  //     //출력용 snackbar
+  //     content: Text('$formatDate'),
+  //     duration: Duration(seconds: 20),
+  //   ));
+  // }
 
   void _requestPermissions() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -161,28 +216,22 @@ class _MainWebViewState extends State<MainWebView> {
         badge: true,
         sound: true,
       );
-      if(settings.authorizationStatus == AuthorizationStatus.authorized) {
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
         await prefs.setBool('isPermissionGranted', true);
+
         _showPromotionalAlert(context);
 
-        Fluttertoast.showToast(msg: '푸시 알림이 허용되었습니다');
-      }else if (settings.authorizationStatus == AuthorizationStatus.denied) {
+      } else if (settings.authorizationStatus == AuthorizationStatus.denied) {
         print("광고 알럿 거부됨");
-        Fluttertoast.showToast(msg: '푸시 알림이 거부되었습니다');
-
-
-
       }
-
     }
+
     // final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
     // NotificationSettings settings = await _firebaseMessaging.requestPermission(
     //   alert: true,
     //   badge: true,
     //   sound: true,
     // );
-
-
 
     // if (settings.authorizationStatus == AuthorizationStatus.authorized) { //시스템 권한
     //
@@ -215,24 +264,22 @@ class _MainWebViewState extends State<MainWebView> {
     final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     await flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>()
+            AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(const AndroidNotificationChannel(
+            'high_importance_channel', 'high_importance_notification',
+            importance: Importance.high));
 
-        'high_importance_channel',
-        'high_importance_notification',
-        importance: Importance.high));
-
-    await flutterLocalNotificationsPlugin.initialize(const InitializationSettings(
+    await flutterLocalNotificationsPlugin
+        .initialize(const InitializationSettings(
       android: AndroidInitializationSettings("@mipmap/ic_launcher"),
     ));
-
   }
 
-  Future<bool> _goBack(BuildContext context) async{
-    if(await webViewController.canGoBack()){
+  Future<bool> _goBack(BuildContext context) async {
+    if (await webViewController.canGoBack()) {
       webViewController.goBack();
       return Future.value(false);
-    }else{
+    } else {
       return Future.value(true);
     }
   }
@@ -243,18 +290,16 @@ class _MainWebViewState extends State<MainWebView> {
         mediaPlaybackRequiresUserGesture: false, // 미디어 자동 재생
         javaScriptEnabled: true, // 자바스크립트 실행 여부
         javaScriptCanOpenWindowsAutomatically: true,
-
-
       ),
       android: AndroidInAppWebViewOptions(
         useHybridComposition: true,
-      )
-  );
+      ));
 
   Future<void> setupInteractedMessage() async {
-    RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+    RemoteMessage? initialMessage =
+        await FirebaseMessaging.instance.getInitialMessage();
 
-    if (initialMessage != null){
+    if (initialMessage != null) {
       // var now = DateTime.now();
       Fluttertoast.showToast(msg: "$initialMessage, $now");
 
@@ -263,13 +308,14 @@ class _MainWebViewState extends State<MainWebView> {
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
   }
 
-  Future<String> getAppUrl(String url) async {//앱 URL 받기
+  Future<String> getAppUrl(String url) async {
+    //앱 URL 받기
     if (Platform.isAndroid) {
-      //print("안드로이드");
+      print("안드로이드");
       return await platform
           .invokeMethod('getAppUrl', <String, Object>{'url': url});
     } else {
-      //print("ios");
+      print("아이오에스");
       return url;
     }
   }
@@ -278,14 +324,13 @@ class _MainWebViewState extends State<MainWebView> {
     String url = message.data["ActionURL"];
     String messageKey = message.data.keys.toString();
 
-    if(url != null) {
+    if (url != null) {
       print("메시지 키 입니다 = $messageKey");
       Navigator.push(
           context,
           // MaterialPageRoute(builder: (context)=> PushWebView(url)),
-          MaterialPageRoute(builder: (context)=>PushedWebView(myUrl: url))
-      );
-    }else{
+          MaterialPageRoute(builder: (context) => PushedWebView(myUrl: url)));
+    } else {
       print("url못받음");
     }
   }
@@ -307,8 +352,7 @@ class _MainWebViewState extends State<MainWebView> {
     if (double.parse(firebaseVersion) > double.parse(appVersion)) {
       showUpdateDialog();
       print("업데이트 해야함");
-    }
-    else {
+    } else {
       MainWebView();
       print("업데이트 안해도됨");
     }
@@ -361,8 +405,6 @@ class _MainWebViewState extends State<MainWebView> {
         });
   }
 
-
-
   Future<void> _setPromotionalAllowed(bool allowed) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool('promotional_notifications', allowed);
@@ -373,7 +415,6 @@ class _MainWebViewState extends State<MainWebView> {
     return prefs.getBool('promotional_notifications') ?? false;
   }
 
-
   @override
   Widget build(BuildContext context) {
     // _configureFirebaseMessaging(context);
@@ -382,152 +423,190 @@ class _MainWebViewState extends State<MainWebView> {
       //   title: Text("한진관광 LIVE"),
       // ),
       body: SafeArea(
-
-        child: WillPopScope (
+        child: WillPopScope(
           onWillPop: () => _goBack(context),
-          child: Column(children:<Widget> [
-            Expanded(child: Stack(children: [
-              InAppWebView(
-                initialUrlRequest: URLRequest(url: myUrl) ,
-                initialOptions: InAppWebViewGroupOptions(
-                  crossPlatform: InAppWebViewOptions(
-                      userAgent: 'APP_WISHROOM_Android',// 설정되면 앱에서 공유하기 안먹힘
-                      useShouldOverrideUrlLoading: true
+          child: Column(
+            children: <Widget>[
+              Expanded(
+                  child: Stack(
+                children: [
+                  InAppWebView(
+                    initialUrlRequest: URLRequest(url: myUrl),
+                    
+                    
+                    initialOptions: InAppWebViewGroupOptions(
+                      crossPlatform: InAppWebViewOptions(
+                        // userAgent: customUserAgent,
+                          useShouldOverrideUrlLoading: true),
+                      android: AndroidInAppWebViewOptions(
+                          mixedContentMode: AndroidMixedContentMode
+                              .MIXED_CONTENT_ALWAYS_ALLOW),
 
-                  ),
-                  android: AndroidInAppWebViewOptions(
-                      mixedContentMode: AndroidMixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW
-                  ),
+                      // android: AndroidInAppWebViewOptions(
+                      //   mixedContentMode: AndroidMixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW
+                      // )
+                    ),
+                    shouldOverrideUrlLoading:
+                        (controller, navigationAction) async {
 
 
-                  // android: AndroidInAppWebViewOptions(
-                  //   mixedContentMode: AndroidMixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW
-                  // )
+                          var uri = navigationAction.request.url;
+                          print(uri);
 
-                ),
-                shouldOverrideUrlLoading:(controller, navigationAction) async {
 
-                  bool isApplink(String url) {
-                    final appScheme = Uri.parse(url).scheme;
+                      // await controller.setOptions(options: InAppWebViewGroupOptions(crossPlatform: InAppWebViewOptions(
+                      //   userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
+                      // )));
+                      bool isApplink(String url) {
+                        final appScheme = Uri.parse(url).scheme;
+                        var uri = navigationAction.request.url;
 
-                    print("앱스킴 = $appScheme"); //https
+                        print("앱스킴 = $appScheme"); //https
 
-                    return appScheme != 'http' &&
-                        appScheme != 'https' &&
-                        appScheme != 'about:blank' &&
-                        appScheme != 'intent://' &&
-                        appScheme != 'data';
-                  }
-                  final url = navigationAction.request.url.toString();
-                  print("유알엘 = $url");
-                  if(isApplink(url) && url != "about:blank") {
-                    print("넘어간다");
-
-                    String getUrl = await getAppUrl(url);
-
-                    if(await canLaunch(getUrl)) {
-                      getAppUrl(String url) async {
-                        var parsingUrl = await platform.invokeMethod('getAppUrl', <String, Object>{'url':url});
-                        return parsingUrl;
+                        return appScheme != 'http' &&
+                            appScheme != 'https' &&
+                            appScheme != 'about:blank' &&
+                            appScheme != 'intent://' &&
+                            appScheme != 'data';
                       }
-                      NavigationActionPolicy.CANCEL;
-                      var value = await getAppUrl(url.toString());
-                      String getUrl = value.toString();
-                      await launchUrl(Uri.parse(getUrl));
-                      return NavigationActionPolicy.CANCEL;
-                    }else {
-                      print("앱 설치되지 않음");
-                      getMarketUrl(String url) async {
-                        var parsingURl = await platform.invokeMethod('getMarketUrl', <String, Object>{'url': url});
-                        return parsingURl;
+
+
+                      final url = navigationAction.request.url.toString();
+                      print("유알엘 = $url");
+                      if (isApplink(url) && url != "about:blank") {
+                        print("넘어간다");
+
+                        String getUrl = await getAppUrl(url);
+
+                        if (await canLaunch(getUrl)) {
+                          getAppUrl(String url) async {
+                            var parsingUrl = await platform.invokeMethod(
+                                'getAppUrl', <String, Object>{'url': url});
+                            return parsingUrl;
+                          }
+
+                          NavigationActionPolicy.CANCEL;
+                          var value = await getAppUrl(url.toString());
+                          String getUrl = value.toString();
+                          await launchUrl(Uri.parse(getUrl));
+                          return NavigationActionPolicy.CANCEL;
+                        } else {
+                          print("앱 설치되지 않음");
+                          getMarketUrl(String url) async {
+                            var parsingURl = await platform.invokeMethod(
+                                'getMarketUrl', <String, Object>{'url': url});
+                            return parsingURl;
+                          }
+
+                          NavigationActionPolicy.CANCEL;
+                          var value = await getMarketUrl(url.toString());
+                          String marketUrl = value.toString();
+                          await launchUrl(Uri.parse(marketUrl));
+                          return NavigationActionPolicy.CANCEL;
+                        }
                       }
-                      NavigationActionPolicy.CANCEL;
-                      var value = await getMarketUrl(url.toString());
-                      String marketUrl = value.toString();
-                      await launchUrl(Uri.parse(marketUrl));
-                      return NavigationActionPolicy.CANCEL;
-                    }
-                  }
-                },
-                onLoadStart: (InAppWebViewController controller, uri) {
-                  print("onLoadStart");
-                  setState(() {myUrl = uri!;});
-                  //
-                  // webViewController!.addJavaScriptHandler(
-                  //   handlerName: 'appView',
-                  //   callback: (args) {
-                  //     // args는 JavaScript에서 전달된 인수입니다.
-                  //     print("JavaScript에서 받은 데이터: $args");
-                  //     // SecondView();
-                  //     // Flutter에서의 처리 로직
-                  //     // return {SecondView};
-                  //
-                  //     Navigator.of(context).push(MaterialPageRoute(
-                  //         builder: (context) => WebBridge())
-                  //     );
-                  //   },
-                  // );
-
-
-                },
-                onLoadStop: (InAppWebViewController controller, uri) {
-                  setState(() {myUrl = uri!;});
-                },
-                onProgressChanged: (controller, progress) {
-                  // if (progress == 100) {pullToRefreshController.endRefreshing();}
-                  setState(() {this.progress = progress / 100;});
-                },
-                androidOnPermissionRequest: (controller, origin, resources) async {
-                  return PermissionRequestResponse(
-                      resources: resources,
-                      action: PermissionRequestResponseAction.GRANT);
-                },
-                onWebViewCreated: ( controller) {
-                  webViewController = controller;
-
-                  webViewController!.addJavaScriptHandler(
-                    handlerName: 'appView',
-                    callback: (args) {
-                      // args는 JavaScript에서 전달된 인수입니다.
-                      print("JavaScript에서 받은 데이터: $args");
-                      // SecondView();
-                      // Flutter에서의 처리 로직
-                      // return {SecondView};
-
-                      // Navigator.of(context).push(MaterialPageRoute(
-                      //     builder: (context) => WebBridgeView(data: adAllowPush , time:"$now")));
-                      // Navigator.of(context).push(MaterialPageRoute(
-                      //     builder: (context) => PermissionScreen(notiPermission:adAllowPush, notiPermissiontime:"$now")));
-
-                      Navigator.of(context).push(MaterialPageRoute(
-                          builder: (context) => PermissionScreen(adAllowPush:adAllowPush, notiPermissiontime:"$now")));
                     },
-                  );
 
-                  // webViewController!.addJavaScriptHandler(
-                  //   handlerName: 'appView',
-                  //   callback: (args) {
-                  //     // args는 JavaScript에서 전달된 인수입니다.
-                  //     print("JavaScript에서 받은 데이터: $args");
-                  //     // SecondView();
-                  //     // Flutter에서의 처리 로직
-                  //     // return {SecondView};
-                  //
-                  //     Navigator.of(context).push(MaterialPageRoute(
-                  //         builder: (context) => WebBridge())
-                  //     );
-                  //   },
-                  // );
+                    onLoadStart: (InAppWebViewController controller, uri) {
+                      print("onLoadStart");
+                      // _setCookies();
 
-                },
-              ),
+                      setState(() {
+                        myUrl = uri!;
+                      });
+                      // webViewController!.addJavaScriptHandler(
+                      //   handlerName: 'appView',
+                      //   callback: (args) {
+                      //     // args는 JavaScript에서 전달된 인수입니다.
+                      //     print("JavaScript에서 받은 데이터: $args");
+                      //     // SecondView();
+                      //     // Flutter에서의 처리 로직
+                      //     // return {SecondView};
+                      //
+                      //     Navigator.of(context).push(MaterialPageRoute(
+                      //         builder: (context) => WebBridge())
+                      //     );
+                      //   },
+                      // );
+                    },
+
+                    onLoadStop: (InAppWebViewController controller, uri) {//웹 페이지 로딩이 완료될 때 호출되는 콜백입니다.
+
+                      _getCookies();
+
+                      setState(() {
+                        myUrl = uri!;
+                      });
+                    },
 
 
-            ],))
-          ],),
+                    onProgressChanged: (controller, progress) {
+                      // if (progress == 100) {pullToRefreshController.endRefreshing();}
+                      setState(() {
+                        this.progress = progress / 100;
+                      });
+                    },
+                    onWebViewCreated: (controller) { //여기다 setcookie, WebView가 생성될 때 호출되는 콜백입니다. InAppWebViewController를 초기화하거나 설정할 수 있습니다.
+                      _setCookies();
+                      print("onWebViewCreated");
+
+                      webViewController = controller;
+
+                      webViewController!.addJavaScriptHandler(
+                        handlerName: 'appView',
+                        callback: (args) {
+                          // args는 JavaScript에서 전달된 인수입니다.
+                          print("JavaScript에서 받은 데이터: $args");
+                          // SecondView();
+                          // Flutter에서의 처리 로직
+                          // return {SecondView};
+
+                          // Navigator.of(context).push(MaterialPageRoute(
+                          //     builder: (context) => WebBridgeView(data: adAllowPush , time:"$now")));
+                          // Navigator.of(context).push(MaterialPageRoute(
+                          //     builder: (context) => PermissionScreen(notiPermission:adAllowPush, notiPermissiontime:"$now")));
+
+                          Navigator.of(context).push(CupertinoPageRoute(
+                              builder: (context) => PermissionScreen(
+                                  adAllowPush: adAllowPush,
+                                  notiPermissiontime: "$now")));
+
+
+                        },
+                      );
+
+                      // webViewController!.addJavaScriptHandler(
+                      //   handlerName: 'appView',
+                      //   callback: (args) {
+                      //     // args는 JavaScript에서 전달된 인수입니다.
+                      //     print("JavaScript에서 받은 데이터: $args");
+                      //     // SecondView();
+                      //     // Flutter에서의 처리 로직
+                      //     // return {SecondView};
+                      //
+                      //     Navigator.of(context).push(MaterialPageRoute(
+                      //         builder: (context) => WebBridge())
+                      //     );
+                      //   },
+                      // );
+                    },
+                    androidOnPermissionRequest:
+                        (controller, origin, resources) async {
+                      return PermissionRequestResponse(
+                          resources: resources,
+                          action: PermissionRequestResponseAction.GRANT);
+                    },
+
+
+
+
+                  ),
+                ],
+              ))
+            ],
+          ),
         ),
       ),
     );
   }
 }
-
