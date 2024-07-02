@@ -63,12 +63,15 @@ class _MainWebViewState extends State<MainWebView> {
   bool adAllowPush = false; //광고성 푸시 허용/비허용 변수
   // bool _notificationEnabled = true;
   String? _token;
-  late final InAppWebViewController webViewController;
+  late InAppWebViewController webViewController;
+
   // late WebViewController _controller;
   String appUserAgent = "APP_WISHROOM_Android";
-  String webUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1";
-  final _cookieManager = WebViewCookieManager();
-  final CookieManager cookieManager = CookieManager.instance();
+  String webUserAgent =
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1";
+
+  // final _cookieManager = WebViewCookieManager();
+  // final CookieManager cookieManager = CookieManager.instance();
 
   @override
   void initState() {
@@ -78,31 +81,68 @@ class _MainWebViewState extends State<MainWebView> {
     setupInteractedMessage();
     checkAppVersion();
     initializeNotification();
-    _setCookies();
     // _showPromotionalAlert();
+    // fetchData();
+    // _setCookie();
+  }
+
+  void _refreshWebView() {
+    print("새로고침");
+    webViewController.reload();
+  }
+
+  Future<void> fetchData() async {
+    var url = Uri.parse('https://qa-m.kaltour.com/');
+    var response = await http.get(
+      url,
+      headers: {
+        'Cookie': 'appCookie=isApp',
+      },
+    );
+    print('Response status: ${response.statusCode}');
+    print('Response body: ${response.body}');
+  }
+
+  void _setCookie() async {
+    print("셋쿠키");
+    CookieManager.instance().setCookie(
+      url: Uri.parse("https://qa-m.kaltour.com/Main/MobileIndex"),
+      name: "appCookie",
+      value: "isApp",
+      domain: ".kaltour.com/",
+    );
   }
 
   void _getCookies() async {
-    final cookies = await cookieManager.getCookies(url: Uri.parse('https://qa-m.kaltour.com/'));
-    print('Cookies for https://qa-m.kaltour.com/:');
-    cookies.forEach((cookie) {
-      print('Name: ${cookie.name}, Value: ${cookie.value}');
-    });
+    // 쿠키 가져오기
+    List<Cookie> cookies = await CookieManager.instance().getCookies(
+        url: Uri.parse("https://qa-m.kaltour.com/Main/MobileIndex"));
+    for (var cookie in cookies) {
+      print('Cookie: ${cookie.name}=${cookie.value}');
+    }
   }
 
-  Future<void> _setCookies() async {
-    await _cookieManager.setCookie(
-      WebViewCookie(
-        name: 'appCookie',
-        value: 'isApp',
-        domain: '.kaltour.com/', // 도메인은 앞에 점을 붙여 서브도메인에서도 사용할 수 있게 설정
-        path: '/'
-      ),
-    );
+  // void _getCookies() async {
+  //   final cookies = await cookieManager.getCookies(url: Uri.parse('https://qa-m.kaltour.com/'));
+  //   print('Cookies for https://qa-m.kaltour.com/:');
+  //   cookies.forEach((cookie) {
+  //     print('Name: ${cookie.name}, Value: ${cookie.value}');
+  //   });
+  // }
 
-    print("setCookies");
-
-  }
+  // Future<void> _setCookies() async {
+  //   await _cookieManager.setCookie(
+  //     WebViewCookie(
+  //       name: 'appCookie',
+  //       value: 'isApp',
+  //       domain: '.kaltour.com/', // 도메인은 앞에 점을 붙여 서브도메인에서도 사용할 수 있게 설정
+  //       path: '/'
+  //     ),
+  //   );
+  //
+  //   print("setCookies");
+  //
+  // }
 
   Future<void> _showPromotionalAlert(BuildContext context) async {
     late DateTime currentDateTime = DateTime.now();
@@ -144,7 +184,8 @@ class _MainWebViewState extends State<MainWebView> {
                 style: TextStyle(color: Colors.red),
               ),
             ),
-            CupertinoDialogAction( //허용시
+            CupertinoDialogAction(
+              //허용시
               //허용시
               onPressed: () {
                 // _setPromotionalAllowed(true);
@@ -220,7 +261,6 @@ class _MainWebViewState extends State<MainWebView> {
         await prefs.setBool('isPermissionGranted', true);
 
         _showPromotionalAlert(context);
-
       } else if (settings.authorizationStatus == AuthorizationStatus.denied) {
         print("광고 알럿 거부됨");
       }
@@ -419,9 +459,14 @@ class _MainWebViewState extends State<MainWebView> {
   Widget build(BuildContext context) {
     // _configureFirebaseMessaging(context);
     return Scaffold(
-      // appBar:AppBar(
-      //   title: Text("한진관광 LIVE"),
-      // ),
+      appBar: AppBar(
+        title: Text("한진관광 LIVE"),
+        actions: [
+          IconButton(onPressed: _getCookies, icon: Icon(Icons.cookie)),
+          IconButton(onPressed: _setCookie, icon: Icon(Icons.refresh)),
+          IconButton(onPressed: _refreshWebView, icon: Icon(Icons.remove)),
+        ],
+      ),
       body: SafeArea(
         child: WillPopScope(
           onWillPop: () => _goBack(context),
@@ -432,11 +477,9 @@ class _MainWebViewState extends State<MainWebView> {
                 children: [
                   InAppWebView(
                     initialUrlRequest: URLRequest(url: myUrl),
-                    
-                    
                     initialOptions: InAppWebViewGroupOptions(
                       crossPlatform: InAppWebViewOptions(
-                        // userAgent: customUserAgent,
+                          // userAgent: customUserAgent,
                           useShouldOverrideUrlLoading: true),
                       android: AndroidInAppWebViewOptions(
                           mixedContentMode: AndroidMixedContentMode
@@ -448,11 +491,8 @@ class _MainWebViewState extends State<MainWebView> {
                     ),
                     shouldOverrideUrlLoading:
                         (controller, navigationAction) async {
-
-
-                          var uri = navigationAction.request.url;
-                          print(uri);
-
+                      var uri = navigationAction.request.url;
+                      print(uri);
 
                       // await controller.setOptions(options: InAppWebViewGroupOptions(crossPlatform: InAppWebViewOptions(
                       //   userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
@@ -469,7 +509,6 @@ class _MainWebViewState extends State<MainWebView> {
                             appScheme != 'intent://' &&
                             appScheme != 'data';
                       }
-
 
                       final url = navigationAction.request.url.toString();
                       print("유알엘 = $url");
@@ -506,11 +545,8 @@ class _MainWebViewState extends State<MainWebView> {
                         }
                       }
                     },
-
                     onLoadStart: (InAppWebViewController controller, uri) {
                       print("onLoadStart");
-                      // _setCookies();
-
                       setState(() {
                         myUrl = uri!;
                       });
@@ -529,26 +565,34 @@ class _MainWebViewState extends State<MainWebView> {
                       //   },
                       // );
                     },
-
-                    onLoadStop: (InAppWebViewController controller, uri) {//웹 페이지 로딩이 완료될 때 호출되는 콜백입니다.
-
-                      _getCookies();
+                    onLoadStop: (InAppWebViewController controller, uri) {
+                      //웹 페이지 로딩이 완료될 때 호출되는 콜백입니다.
 
                       setState(() {
                         myUrl = uri!;
                       });
                     },
-
-
                     onProgressChanged: (controller, progress) {
                       // if (progress == 100) {pullToRefreshController.endRefreshing();}
                       setState(() {
                         this.progress = progress / 100;
                       });
                     },
-                    onWebViewCreated: (controller) { //여기다 setcookie, WebView가 생성될 때 호출되는 콜백입니다. InAppWebViewController를 초기화하거나 설정할 수 있습니다.
-                      _setCookies();
+                    onWebViewCreated: (controller) async {
+                      //여기다 setcookie, WebView가 생성될 때 호출되는 콜백입니다. InAppWebViewController를 초기화하거나 설정할 수 있습니다.
                       print("onWebViewCreated");
+                      // _setCookie();
+
+                      await CookieManager.instance().setCookie(
+                        url: Uri.parse("https://qa-m.kaltour.com/"),
+                        name: "appCookie",
+                        value: "isApp",
+                        domain: ".kaltour.com",
+                        isSecure: false,
+                        isHttpOnly: false,
+                        // expiresDate: 99,
+                        // maxAge: 99,
+                      );
 
                       webViewController = controller;
 
@@ -570,8 +614,6 @@ class _MainWebViewState extends State<MainWebView> {
                               builder: (context) => PermissionScreen(
                                   adAllowPush: adAllowPush,
                                   notiPermissiontime: "$now")));
-
-
                         },
                       );
 
@@ -596,10 +638,6 @@ class _MainWebViewState extends State<MainWebView> {
                           resources: resources,
                           action: PermissionRequestResponseAction.GRANT);
                     },
-
-
-
-
                   ),
                 ],
               ))
