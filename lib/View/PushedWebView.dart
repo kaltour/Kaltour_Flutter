@@ -114,8 +114,19 @@ class _PushedWebViewState extends State<PushedWebView> {
                     }
                   }
                 },
-                onWebViewCreated: (InAppWebViewController controller) {
+                onWebViewCreated: (InAppWebViewController controller) async {
                   print("onWebViewCreated");
+
+                  await CookieManager.instance().setCookie(
+                    url: Uri.parse("https://qa-m.kaltour.com/"),
+                    name: "appCookie",
+                    value: "isApp",
+                    domain: ".kaltour.com",
+                    isSecure: false,
+                    isHttpOnly: false,
+                    // expiresDate: 99,
+                    // maxAge: 99,
+                  );
                   webViewController = controller;
                 },
               )

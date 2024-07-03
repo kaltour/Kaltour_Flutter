@@ -60,7 +60,7 @@ class _MainWebViewState extends State<MainWebView> {
   // static const platform = MethodChannel('fcm_default_channel')
   double progress = 0;
   DateTime now = DateTime.now();
-  bool adAllowPush = false; //광고성 푸시 허용/비허용 변수
+  late bool adAllowPush = false; //광고성 푸시 허용/비허용 변수
   // bool _notificationEnabled = true;
   String? _token;
   late InAppWebViewController webViewController;
@@ -73,6 +73,8 @@ class _MainWebViewState extends State<MainWebView> {
   // final _cookieManager = WebViewCookieManager();
   // final CookieManager cookieManager = CookieManager.instance();
 
+  late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
+
   @override
   void initState() {
     super.initState();
@@ -81,17 +83,28 @@ class _MainWebViewState extends State<MainWebView> {
     setupInteractedMessage();
     checkAppVersion();
     initializeNotification();
+    loadFixedValue();
     // _showPromotionalAlert();
     // fetchData();
     // _setCookie();
+    // flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    // const AndroidInitializationSettings initializationSettingsAndroid =
+    // AndroidInitializationSettings('app_icon');
+    // final InitializationSettings initializationSettings = InitializationSettings(
+    //   android: initializationSettingsAndroid,
+    // );
+    //
+    // flutterLocalNotificationsPlugin.initialize(initializationSettings);
+    // _createNotificationChannel();
   }
+
 
   void _refreshWebView() {
     print("새로고침");
     webViewController.reload();
   }
 
-  Future<void> fetchData() async {
+  void _fetchData() async {
     var url = Uri.parse('https://qa-m.kaltour.com/');
     var response = await http.get(
       url,
@@ -106,7 +119,7 @@ class _MainWebViewState extends State<MainWebView> {
   void _setCookie() async {
     print("셋쿠키");
     CookieManager.instance().setCookie(
-      url: Uri.parse("https://qa-m.kaltour.com/Main/MobileIndex"),
+      url: Uri.parse("https://qa-m.kaltour.com/"),
       name: "appCookie",
       value: "isApp",
       domain: ".kaltour.com/",
@@ -116,11 +129,47 @@ class _MainWebViewState extends State<MainWebView> {
   void _getCookies() async {
     // 쿠키 가져오기
     List<Cookie> cookies = await CookieManager.instance().getCookies(
-        url: Uri.parse("https://qa-m.kaltour.com/Main/MobileIndex"));
+        url: Uri.parse("https://qa-m.kaltour.com/"));
     for (var cookie in cookies) {
       print('Cookie: ${cookie.name}=${cookie.value}');
     }
   }
+  void _showNotification() async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+    AndroidNotificationDetails(
+      'My_Channel_ID',
+      'My_Channel',
+      // 'This is an example notification channel',
+      importance: Importance.high,
+      priority: Priority.high,
+      ticker: 'ticker',
+    );
+    const NotificationDetails platformChannelSpecifics = NotificationDetails(
+      android: androidPlatformChannelSpecifics,
+    );
+    await flutterLocalNotificationsPlugin.show(
+      0,
+      'New Alert',
+      'How to show Local Notification',
+      platformChannelSpecifics,
+      payload: 'item x',
+    );
+  }
+
+  // void toggleFixedValue() {
+  //   setState(() {
+  //     adAllowPush = !adAllowPush; // true <-> false 토글
+  //   });
+  // }
+
+
+  void toggleFixedValue() {
+    setState(() {
+      adAllowPush = !adAllowPush; // 값 토글
+      saveFixedValue(adAllowPush); // 변경된 값 저장하기
+    });
+  }
+
 
   // void _getCookies() async {
   //   final cookies = await cookieManager.getCookies(url: Uri.parse('https://qa-m.kaltour.com/'));
@@ -143,8 +192,8 @@ class _MainWebViewState extends State<MainWebView> {
   //   print("setCookies");
   //
   // }
-
-  Future<void> _showPromotionalAlert(BuildContext context) async {
+  void _showPromotionalAlert(BuildContext context) async {
+    print("_showPromotionalAlert");
     late DateTime currentDateTime = DateTime.now();
     return showCupertinoDialog<void>(
       barrierDismissible: false,
@@ -155,10 +204,20 @@ class _MainWebViewState extends State<MainWebView> {
           content: Text('특가 상품 및 이벤트 정보 알림을\n 수신하겠습니까?'),
           actions: [
             CupertinoDialogAction(
-              onPressed: () {
+              child: Text(
+                '아니오',
+                style: TextStyle(color: Colors.red),
+              ),
+              onPressed: () { //거부시
+
+                setState(() {
+                  print("광고성 앱푸신 거부 $adAllowPush");
+                });
                 // _setPromotionalAllowed(false);
-                adAllowPush = false;
-                print("광고성 앱푸신 거부");
+                // adAllowPush == false;
+                // print("MainWeb에서 푸시 = $adAllowPush");
+                //
+
                 FirebaseMessaging.instance.deleteToken();
                 print("토큰 삭제됨");
                 var now = new DateTime
@@ -177,23 +236,24 @@ class _MainWebViewState extends State<MainWebView> {
                     // fontSize: 16.0
                     );
 
-                Navigator.of(context).pop();
+                Navigator.pop(context, false);
               },
-              child: Text(
-                '아니오',
-                style: TextStyle(color: Colors.red),
-              ),
+
             ),
             CupertinoDialogAction(
-              //허용시
-              //허용시
-              onPressed: () {
-                // _setPromotionalAllowed(true);
-                Navigator.of(context).pop();
-
+              child: Text(
+                '네',
+                style: TextStyle(
+                  // fontWeight: FontWeight.bold,
+                    color: Colors.blue),
+              ),
+              onPressed: () { //허용시
+                setState(() {
+                  adAllowPush = true;
+                  print("MainWeb에서 푸시 = $adAllowPush");
+                  saveFixedValue(adAllowPush);
+                });
                 _getToken();
-                adAllowPush = true;
-                print("광고성 앱푸신 허용");
                 var now = new DateTime
                     .now(); //반드시 다른 함수에서 해야함, Mypage같은 클래스에서는 사용 불가능
                 String formatDate =
@@ -206,24 +266,25 @@ class _MainWebViewState extends State<MainWebView> {
                     textColor: Colors.white,
                     toastLength: Toast.LENGTH_LONG,
                     gravity: ToastGravity.TOP);
+                // Navigator.of(context).pop();
+
+                Navigator.pop(context, true);
               },
               // style: const ButtonStyle(
               //   backgroundColor: MaterialStatePropertyAll<Color>(
               //       Color.fromRGBO(1, 123, 178, 0.6)
               //   ),
               // ),
-              child: Text(
-                '네',
-                style: TextStyle(
-                    // fontWeight: FontWeight.bold,
-                    color: Colors.blue),
-              ),
+
+
             ),
           ],
         );
       },
     );
+
   }
+
 
   void _getToken() async {
     FirebaseMessaging messaging = FirebaseMessaging.instance;
@@ -259,7 +320,6 @@ class _MainWebViewState extends State<MainWebView> {
       );
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
         await prefs.setBool('isPermissionGranted', true);
-
         _showPromotionalAlert(context);
       } else if (settings.authorizationStatus == AuthorizationStatus.denied) {
         print("광고 알럿 거부됨");
@@ -313,6 +373,29 @@ class _MainWebViewState extends State<MainWebView> {
         .initialize(const InitializationSettings(
       android: AndroidInitializationSettings("@mipmap/ic_launcher"),
     ));
+  }
+
+  void _createNotificationChannel() async {
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+        "My_Channel_ID",
+        "My_Channel",
+        importance: Importance.high
+    );
+
+    final NotificationDetails platformChannelSpecifics = NotificationDetails(
+      android: AndroidNotificationDetails(
+        channel.id,
+        channel.name,
+        importance: Importance.max,
+        priority: Priority.high,
+      ),
+    );
+
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+
   }
 
   Future<bool> _goBack(BuildContext context) async {
@@ -445,27 +528,40 @@ class _MainWebViewState extends State<MainWebView> {
         });
   }
 
-  Future<void> _setPromotionalAllowed(bool allowed) async {
+
+  Future<void> loadFixedValue() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('promotional_notifications', allowed);
+    setState(() {
+      adAllowPush = prefs.getBool('adAllowPush') ?? false; // 저장된 값 불러오기, 없으면 기본값은 false
+    });
   }
 
-  Future<bool> _isPromotionalAllowed() async {
+  Future<void> saveFixedValue(bool value) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('promotional_notifications') ?? false;
+    await prefs.setBool('adAllowPush', value); // 값 저장하기
   }
+
+
+
+  // Future<void> _setPromotionalAllowed(bool allowed) async {
+  //   SharedPreferences prefs = await SharedPreferences.getInstance();
+  //   await prefs.setBool('promotional_notifications', allowed);
+  // }
+  //
+  // Future<bool> _isPromotionalAllowed() async {
+  //   SharedPreferences prefs = await SharedPreferences.getInstance();
+  //   return prefs.getBool('promotional_notifications') ?? false;
+  // }
 
   @override
   Widget build(BuildContext context) {
     // _configureFirebaseMessaging(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text("한진관광 LIVE"),
         actions: [
-          IconButton(onPressed: _getCookies, icon: Icon(Icons.cookie)),
-          IconButton(onPressed: _setCookie, icon: Icon(Icons.refresh)),
-          IconButton(onPressed: _refreshWebView, icon: Icon(Icons.remove)),
+          ElevatedButton(onPressed: toggleFixedValue, child: Text("Toggle $adAllowPush")),
         ],
+
       ),
       body: SafeArea(
         child: WillPopScope(
@@ -514,7 +610,6 @@ class _MainWebViewState extends State<MainWebView> {
                       print("유알엘 = $url");
                       if (isApplink(url) && url != "about:blank") {
                         print("넘어간다");
-
                         String getUrl = await getAppUrl(url);
 
                         if (await canLaunch(getUrl)) {
@@ -523,7 +618,6 @@ class _MainWebViewState extends State<MainWebView> {
                                 'getAppUrl', <String, Object>{'url': url});
                             return parsingUrl;
                           }
-
                           NavigationActionPolicy.CANCEL;
                           var value = await getAppUrl(url.toString());
                           String getUrl = value.toString();
@@ -605,15 +699,26 @@ class _MainWebViewState extends State<MainWebView> {
                           // Flutter에서의 처리 로직
                           // return {SecondView};
 
-                          // Navigator.of(context).push(MaterialPageRoute(
-                          //     builder: (context) => WebBridgeView(data: adAllowPush , time:"$now")));
-                          // Navigator.of(context).push(MaterialPageRoute(
-                          //     builder: (context) => PermissionScreen(notiPermission:adAllowPush, notiPermissiontime:"$now")));
 
-                          Navigator.of(context).push(CupertinoPageRoute(
+                          Navigator.push(context, CupertinoPageRoute(
                               builder: (context) => PermissionScreen(
-                                  adAllowPush: adAllowPush,
-                                  notiPermissiontime: "$now")));
+                                  adAllowPushValue: adAllowPush,
+                                  notiPermissiontime: "$now")
+                          ));
+
+
+                          // Navigator.of(context).push(CupertinoPageRoute(
+                          //     builder: (context) => PermissionScreen(
+                          //         adAllowPushValue: adAllowPush,
+                          //         notiPermissiontime: "$now")
+                          // ));
+
+
+                          // Navigator.push(context, MaterialPageRoute (
+                          //   builder: (context) => PermissionScreen(
+                          //       adAllowPushValue: adAllowPush,
+                          //       notiPermissiontime: "notiPermissiontime")
+                          // ));
                         },
                       );
 

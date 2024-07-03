@@ -8,13 +8,17 @@ import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
-
 class PermissionScreen extends StatefulWidget {
-  final bool adAllowPush;
+  final bool adAllowPushValue;
   String notiPermissiontime;
+  // final ValueChanged<bool> onValueChanged;
 
-  PermissionScreen(
-      {required this.adAllowPush, required this.notiPermissiontime});
+  PermissionScreen({
+    required this.adAllowPushValue,
+    required this.notiPermissiontime,
+    // required this.onValueChanged,
+    // required this.onValueChanged,
+  });
 
   @override
   _PermissionScreenState createState() => _PermissionScreenState();
@@ -28,18 +32,18 @@ class _PermissionScreenState extends State<PermissionScreen> {
   PermissionStatus _permissionStatus = PermissionStatus.denied;
   String? _token;
 
-
   @override
   void initState() {
     super.initState();
     // _checkPermissionStatus();
     _checkNotificationPermission();
-    _adAllowPush = widget.adAllowPush;
-    checkPermissionStatus();
+    _adAllowPush = widget.adAllowPushValue;
+    // checkPermissionStatus();
     _loadSwitchValue();
 
-
+    print("광고성 수신 = $_adAllowPush");
   }
+
   void _getToken() async {
     FirebaseMessaging messaging = FirebaseMessaging.instance;
     String? token = await messaging.getToken();
@@ -48,6 +52,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
     });
     print("FCM Token(토큰) : $_token");
   }
+
   void _toggleSwitch(bool value) {
     //광고성
     setState(() {
@@ -59,22 +64,21 @@ class _PermissionScreenState extends State<PermissionScreen> {
       // _showSnackBar('광고성 켜졌습니다');
       _showAlert(context);
       // FirebaseMessaging.instance.getToken();
-
       _getToken();
+      print("광고성 켜짐");
 
       setState(() {
         _adAllowPush = true;
+        print("_adAllowPush = $_adAllowPush");
       });
-
     } else {
       // _showSnackBar('광고성 꺼졌습니다');
-      print("Firebase 토큰 삭제됨");
+      print("Firebase 토큰 삭제됨 광고성 푸시 해제");
       _showAlert(context);
       FirebaseMessaging.instance.deleteToken();
-
-
       setState(() {
         _adAllowPush = false;
+        print("_adAllowPush = false");
       });
     }
   }
@@ -94,12 +98,11 @@ class _PermissionScreenState extends State<PermissionScreen> {
       _adAllowPush = (prefs.getBool('adAllowPush') ?? false);
     });
   }
+
   _saveSwitchValue(bool value) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.setBool('adAllowPush', value);
   }
-
-
 
   void _checkNotificationPermission() async {
     final status = await Permission.notification.status;
@@ -116,6 +119,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
       _isNotificationEnabled = _permissionStatus == PermissionStatus.granted;
     });
   }
+
   void checkPermissionStatus() async {
     PermissionStatus pushStatus = await Permission.notification.status;
     setState(() {
@@ -127,7 +131,8 @@ class _PermissionScreenState extends State<PermissionScreen> {
   void _showAlert(BuildContext context) {
     showCupertinoDialog(
         context: context,
-        builder: (context) => CupertinoAlertDialog(
+        builder: (context) =>
+            CupertinoAlertDialog(
               // title: Text("한진관광",
               //   style: TextStyle(
               //     color: Colors.blue
@@ -135,7 +140,10 @@ class _PermissionScreenState extends State<PermissionScreen> {
               // ),
 
               content: Text(
-                  "이벤트 및 마케팅 정보 수신에 \n ${_adAllowPush ? "동의" : "거부"}하였습니다. ${currentDateTime.year}년 ${currentDateTime.month}월 ${currentDateTime.day}일"),
+                  "이벤트 및 마케팅 정보 수신에 \n ${_adAllowPush
+                      ? "동의"
+                      : "거부"}하였습니다. ${currentDateTime.year}년 ${currentDateTime
+                      .month}월 ${currentDateTime.day}일"),
               actions: <Widget>[
                 CupertinoDialogAction(
                   child: Text(
@@ -145,7 +153,6 @@ class _PermissionScreenState extends State<PermissionScreen> {
                   ),
                   onPressed: () {
                     Navigator.of(context).pop();
-
                   },
                 ),
                 // CupertinoDialogAction(child: Text("cancel"),
@@ -217,8 +224,8 @@ class _PermissionScreenState extends State<PermissionScreen> {
                     ? '시스템 알림'
                     : '시스템 알림',
                 style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.w600
-                    // fontWeight: FontWeight.w400
-                    ),
+                  // fontWeight: FontWeight.w400
+                ),
               ),
               Spacer(),
               Visibility(
@@ -227,15 +234,16 @@ class _PermissionScreenState extends State<PermissionScreen> {
                   // color: CupertinoColors.activeBlue,
                   onPressed: () {
                     openAppSettings();
-                    if(Platform.isIOS) {
+                    if (Platform.isIOS) {
                       print("ios에서");
                     }
                   },
                   child: Text(
                     "설정하기",
-                    style: TextStyle(fontSize: 18.0, color: Colors.blue,
-                      fontWeight: FontWeight.bold
-                    ),
+                    style: TextStyle(
+                        fontSize: 18.0,
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -260,21 +268,40 @@ class _PermissionScreenState extends State<PermissionScreen> {
                         fontSize: 17.0,
                       )),
                   SizedBox(width: 70),
+                  // CupertinoSwitch(
+                  //   value: _adAllowPush,
+                  //   onChanged: isSwitchEnabled ? (value) {
+                  //     // _adAllowPush = value;
+                  //     setState(() {
+                  //       // _adAllowPush = value;
+                  //       _toggleSwitch(value);
+                  //       _adAllowPush = value;
+                  //       print("스위치 값 = $_adAllowPush");
+                  //     });
+                  //     _saveSwitchValue(value);
+                  //   } : null,
+                  //   activeColor: Colors.blue,
+                  //   trackColor: Colors.grey,
+                  //   // activeColor: CupertinoColors.activeBlue,
+                  // ),
+
                   CupertinoSwitch(
-                    value: _adAllowPush == true,
-                    onChanged: isSwitchEnabled ? (value) {
-                      // _adAllowPush = value;
-                      setState(() {
-                        _adAllowPush = value;
-                        _toggleSwitch(value);
-                        _adAllowPush = value;
-                      });
-                      _saveSwitchValue(value);
-                    } : null,
-                    activeColor: Colors.blue,
-                    trackColor: Colors.grey,
-                    // activeColor: CupertinoColors.activeBlue,
-                  ),
+                      value: _adAllowPush,
+                      activeColor: Colors.blue,
+                      trackColor: Colors.grey,
+                      onChanged: (value) {
+                        setState(
+                          () {
+                            _adAllowPush = value;
+                            _toggleSwitch(value);
+                            _saveSwitchValue(value);
+
+                            // _toggleSwitch(value);
+                          },
+                        );
+                        // widget.onValueChanged(value);
+                        // _saveSwitchValue(value)
+                      }),
                 ],
               ),
               // Visibility(

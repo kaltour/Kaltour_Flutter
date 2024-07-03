@@ -63,16 +63,16 @@ const platform = MethodChannel('androidIntent');
 //   //   )
 //   // );
 // }
-const AndroidNotificationChannel channel = AndroidNotificationChannel(
-  'high_importance_channel', // id
-  'high_importance_notification', // title
-  // 'This channel is used for important notifications', //description
-  importance: Importance.high,
-);
+// const AndroidNotificationChannel channel = AndroidNotificationChannel(
+//   'high_importance_channel', // id
+//   'high_importance_notification', // title
+//   // 'This channel is used for important notifications', //description
+//   importance: Importance.high,
+// );
 
 
 void main() async { //시작점
-  print("채널! = =$channel");
+  // print("채널! = =$channel");
   print("!!!RUN APP!!!");
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
