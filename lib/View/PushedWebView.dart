@@ -118,7 +118,7 @@ class _PushedWebViewState extends State<PushedWebView> {
                   print("onWebViewCreated");
 
                   await CookieManager.instance().setCookie(
-                    url: Uri.parse("https://qa-m.kaltour.com/"),
+                    url: Uri.parse("https://m.kaltour.com/"),
                     name: "appCookie",
                     value: "isApp",
                     domain: ".kaltour.com",

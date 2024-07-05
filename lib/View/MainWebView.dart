@@ -84,6 +84,7 @@ class _MainWebViewState extends State<MainWebView> {
     checkAppVersion();
     initializeNotification();
     loadFixedValue();
+    print("토큰 = $_token");
     // _showPromotionalAlert();
     // fetchData();
     // _setCookie();
@@ -105,7 +106,7 @@ class _MainWebViewState extends State<MainWebView> {
   }
 
   void _fetchData() async {
-    var url = Uri.parse('https://qa-m.kaltour.com/');
+    var url = Uri.parse('https://m.kaltour.com/');
     var response = await http.get(
       url,
       headers: {
@@ -119,7 +120,7 @@ class _MainWebViewState extends State<MainWebView> {
   void _setCookie() async {
     print("셋쿠키");
     CookieManager.instance().setCookie(
-      url: Uri.parse("https://qa-m.kaltour.com/"),
+      url: Uri.parse("https://m.kaltour.com/"),
       name: "appCookie",
       value: "isApp",
       domain: ".kaltour.com/",
@@ -129,7 +130,7 @@ class _MainWebViewState extends State<MainWebView> {
   void _getCookies() async {
     // 쿠키 가져오기
     List<Cookie> cookies = await CookieManager.instance().getCookies(
-        url: Uri.parse("https://qa-m.kaltour.com/"));
+        url: Uri.parse("https://m.kaltour.com/"));
     for (var cookie in cookies) {
       print('Cookie: ${cookie.name}=${cookie.value}');
     }
@@ -235,10 +236,8 @@ class _MainWebViewState extends State<MainWebView> {
 
                     // fontSize: 16.0
                     );
-
                 Navigator.pop(context, false);
               },
-
             ),
             CupertinoDialogAction(
               child: Text(
@@ -395,7 +394,6 @@ class _MainWebViewState extends State<MainWebView> {
         .resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
-
   }
 
   Future<bool> _goBack(BuildContext context) async {
@@ -424,7 +422,7 @@ class _MainWebViewState extends State<MainWebView> {
 
     if (initialMessage != null) {
       // var now = DateTime.now();
-      Fluttertoast.showToast(msg: "$initialMessage, $now");
+      // Fluttertoast.showToast(msg: "$initialMessage, $now");
 
       _handleMessage(initialMessage);
     }
@@ -557,12 +555,12 @@ class _MainWebViewState extends State<MainWebView> {
   Widget build(BuildContext context) {
     // _configureFirebaseMessaging(context);
     return Scaffold(
-      appBar: AppBar(
-        actions: [
-          ElevatedButton(onPressed: toggleFixedValue, child: Text("Toggle $adAllowPush")),
-        ],
-
-      ),
+      // appBar: AppBar(
+      //   actions: [
+      //     ElevatedButton(onPressed: toggleFixedValue, child: Text("Toggle $adAllowPush")),
+      //   ],
+      //
+      // ),
       body: SafeArea(
         child: WillPopScope(
           onWillPop: () => _goBack(context),
@@ -676,9 +674,8 @@ class _MainWebViewState extends State<MainWebView> {
                       //여기다 setcookie, WebView가 생성될 때 호출되는 콜백입니다. InAppWebViewController를 초기화하거나 설정할 수 있습니다.
                       print("onWebViewCreated");
                       // _setCookie();
-
                       await CookieManager.instance().setCookie(
-                        url: Uri.parse("https://qa-m.kaltour.com/"),
+                        url: Uri.parse("https://m.kaltour.com/"),
                         name: "appCookie",
                         value: "isApp",
                         domain: ".kaltour.com",
@@ -689,7 +686,6 @@ class _MainWebViewState extends State<MainWebView> {
                       );
 
                       webViewController = controller;
-
                       webViewController!.addJavaScriptHandler(
                         handlerName: 'appView',
                         callback: (args) {

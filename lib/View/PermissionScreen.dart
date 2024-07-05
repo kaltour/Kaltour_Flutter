@@ -7,10 +7,15 @@ import 'dart:io' show Platform;
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import 'package:kaltour_flutter/Utilities/CheckAppVersion.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
+
 
 class PermissionScreen extends StatefulWidget {
   final bool adAllowPushValue;
   String notiPermissiontime;
+
   // final ValueChanged<bool> onValueChanged;
 
   PermissionScreen({
@@ -31,6 +36,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
   bool _isNotificationEnabled = false;
   PermissionStatus _permissionStatus = PermissionStatus.denied;
   String? _token;
+  String appVersion = "loading";
 
   @override
   void initState() {
@@ -41,8 +47,20 @@ class _PermissionScreenState extends State<PermissionScreen> {
     // checkPermissionStatus();
     _loadSwitchValue();
 
-    print("광고성 수신 = $_adAllowPush");
+    print("광고성 수신 허용 값 (Bool) = $_adAllowPush");
+    print("토큰 = $_token");
+    checkAppVersion();
+    loadAppVersion();
+
   }
+
+  Future<void> loadAppVersion() async {
+    String version = await checkAppVersion();  // 비동기 함수의 결과를 기다림
+    setState(() {
+      appVersion = version;
+    });
+  }
+
 
   void _getToken() async {
     FirebaseMessaging messaging = FirebaseMessaging.instance;
@@ -131,8 +149,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
   void _showAlert(BuildContext context) {
     showCupertinoDialog(
         context: context,
-        builder: (context) =>
-            CupertinoAlertDialog(
+        builder: (context) => CupertinoAlertDialog(
               // title: Text("한진관광",
               //   style: TextStyle(
               //     color: Colors.blue
@@ -140,10 +157,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
               // ),
 
               content: Text(
-                  "이벤트 및 마케팅 정보 수신에 \n ${_adAllowPush
-                      ? "동의"
-                      : "거부"}하였습니다. ${currentDateTime.year}년 ${currentDateTime
-                      .month}월 ${currentDateTime.day}일"),
+                  "이벤트 및 마케팅 정보 수신에 \n ${_adAllowPush ? "동의" : "거부"}하였습니다. ${currentDateTime.year}년 ${currentDateTime.month}월 ${currentDateTime.day}일"),
               actions: <Widget>[
                 CupertinoDialogAction(
                   child: Text(
@@ -201,7 +215,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          '한진관광 앱 설정',
+          '앱 설정',
           style: TextStyle(
             fontFamily: 'Roboto',
             fontSize: 17,
@@ -224,8 +238,8 @@ class _PermissionScreenState extends State<PermissionScreen> {
                     ? '시스템 알림'
                     : '시스템 알림',
                 style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.w600
-                  // fontWeight: FontWeight.w400
-                ),
+                    // fontWeight: FontWeight.w400
+                    ),
               ),
               Spacer(),
               Visibility(
@@ -250,12 +264,12 @@ class _PermissionScreenState extends State<PermissionScreen> {
             ],
           ),
         ),
-        Container(
-          child: Divider(
-            color: Colors.grey,
-            thickness: 0.5,
-          ),
-        ),
+        // Container(
+        //   child: Divider(
+        //     color: Colors.grey,
+        //     thickness: 0.5,
+        //   ),
+        // ),
         Container(
           padding: EdgeInsets.only(left: 24, right: 18, top: 19, bottom: 18),
           child: Row(
@@ -311,6 +325,32 @@ class _PermissionScreenState extends State<PermissionScreen> {
             ],
           ),
         ),
+        Container(
+          child: Divider(
+            color: Colors.grey,
+            thickness: 0.5,
+          ),
+        ),
+        Container(
+          padding: EdgeInsets.only(left: 24, right: 18, top: 19, bottom: 18),
+          alignment: Alignment.centerLeft,
+          child: Row(
+            children: [
+              Text("버전정보",
+                style: TextStyle(
+                  fontSize: 17.0
+                ),
+              ),
+              Spacer(),
+              Text("$appVersion",
+                style: TextStyle(
+                  fontSize: 16.0,
+                  color: Colors.black54
+                ),
+              )
+            ],
+          )
+        )
       ]),
     );
   }
