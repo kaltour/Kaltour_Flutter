@@ -3,6 +3,7 @@ import 'dart:ffi';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:get/route_manager.dart';
 import 'package:kaltour_flutter/View/PermissionScreen.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -39,7 +40,8 @@ import 'package:webview_cookie_manager/webview_cookie_manager.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:path_provider/path_provider.dart';
 
-const platform = MethodChannel('androidIntent');
+// const platform = MethodChannel('androidIntent');
+const MethodChannel methodChannel = MethodChannel('androidIntent');
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -81,10 +83,11 @@ class _MainWebViewState extends State<MainWebView> {
     _requestPermissions();
     print("MainWebView실행");
     setupInteractedMessage();
-    checkAppVersion();
+    // checkAppVersion();
     initializeNotification();
     loadFixedValue();
     print("토큰 = $_token");
+    // _androidOnly();
     // _showPromotionalAlert();
     // fetchData();
     // _setCookie();
@@ -97,12 +100,6 @@ class _MainWebViewState extends State<MainWebView> {
     //
     // flutterLocalNotificationsPlugin.initialize(initializationSettings);
     // _createNotificationChannel();
-  }
-
-
-  void _refreshWebView() {
-    print("새로고침");
-    webViewController.reload();
   }
 
   void _fetchData() async {
@@ -129,15 +126,16 @@ class _MainWebViewState extends State<MainWebView> {
 
   void _getCookies() async {
     // 쿠키 가져오기
-    List<Cookie> cookies = await CookieManager.instance().getCookies(
-        url: Uri.parse("https://m.kaltour.com/"));
+    List<Cookie> cookies = await CookieManager.instance()
+        .getCookies(url: Uri.parse("https://m.kaltour.com/"));
     for (var cookie in cookies) {
       print('Cookie: ${cookie.name}=${cookie.value}');
     }
   }
+
   void _showNotification() async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
-    AndroidNotificationDetails(
+        AndroidNotificationDetails(
       'My_Channel_ID',
       'My_Channel',
       // 'This is an example notification channel',
@@ -163,14 +161,12 @@ class _MainWebViewState extends State<MainWebView> {
   //   });
   // }
 
-
   void toggleFixedValue() {
     setState(() {
       adAllowPush = !adAllowPush; // 값 토글
       saveFixedValue(adAllowPush); // 변경된 값 저장하기
     });
   }
-
 
   // void _getCookies() async {
   //   final cookies = await cookieManager.getCookies(url: Uri.parse('https://qa-m.kaltour.com/'));
@@ -209,7 +205,8 @@ class _MainWebViewState extends State<MainWebView> {
                 '아니오',
                 style: TextStyle(color: Colors.red),
               ),
-              onPressed: () { //거부시
+              onPressed: () {
+                //거부시
 
                 setState(() {
                   print("광고성 앱푸신 거부 $adAllowPush");
@@ -243,10 +240,11 @@ class _MainWebViewState extends State<MainWebView> {
               child: Text(
                 '네',
                 style: TextStyle(
-                  // fontWeight: FontWeight.bold,
+                    // fontWeight: FontWeight.bold,
                     color: Colors.blue),
               ),
-              onPressed: () { //허용시
+              onPressed: () {
+                //허용시
                 setState(() {
                   adAllowPush = true;
                   print("MainWeb에서 푸시 = $adAllowPush");
@@ -274,16 +272,12 @@ class _MainWebViewState extends State<MainWebView> {
               //       Color.fromRGBO(1, 123, 178, 0.6)
               //   ),
               // ),
-
-
             ),
           ],
         );
       },
     );
-
   }
-
 
   void _getToken() async {
     FirebaseMessaging messaging = FirebaseMessaging.instance;
@@ -376,10 +370,8 @@ class _MainWebViewState extends State<MainWebView> {
 
   void _createNotificationChannel() async {
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
-        "My_Channel_ID",
-        "My_Channel",
-        importance: Importance.high
-    );
+        "My_Channel_ID", "My_Channel",
+        importance: Importance.high);
 
     final NotificationDetails platformChannelSpecifics = NotificationDetails(
       android: AndroidNotificationDetails(
@@ -392,7 +384,7 @@ class _MainWebViewState extends State<MainWebView> {
 
     await flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>()
+            AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
   }
 
@@ -433,7 +425,7 @@ class _MainWebViewState extends State<MainWebView> {
     //앱 URL 받기
     if (Platform.isAndroid) {
       print("안드로이드");
-      return await platform
+      return await methodChannel
           .invokeMethod('getAppUrl', <String, Object>{'url': url});
     } else {
       print("아이오에스");
@@ -526,11 +518,11 @@ class _MainWebViewState extends State<MainWebView> {
         });
   }
 
-
   Future<void> loadFixedValue() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      adAllowPush = prefs.getBool('adAllowPush') ?? false; // 저장된 값 불러오기, 없으면 기본값은 false
+      adAllowPush =
+          prefs.getBool('adAllowPush') ?? false; // 저장된 값 불러오기, 없으면 기본값은 false
     });
   }
 
@@ -538,8 +530,6 @@ class _MainWebViewState extends State<MainWebView> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool('adAllowPush', value); // 값 저장하기
   }
-
-
 
   // Future<void> _setPromotionalAllowed(bool allowed) async {
   //   SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -585,8 +575,6 @@ class _MainWebViewState extends State<MainWebView> {
                     ),
                     shouldOverrideUrlLoading:
                         (controller, navigationAction) async {
-                      var uri = navigationAction.request.url;
-                      print(uri);
 
                       // await controller.setOptions(options: InAppWebViewGroupOptions(crossPlatform: InAppWebViewOptions(
                       //   userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
@@ -596,11 +584,10 @@ class _MainWebViewState extends State<MainWebView> {
                         var uri = navigationAction.request.url;
 
                         print("앱스킴 = $appScheme"); //https
-
                         return appScheme != 'http' &&
                             appScheme != 'https' &&
                             appScheme != 'about:blank' &&
-                            appScheme != 'intent://' &&
+                            // appScheme != 'intent://' &&
                             appScheme != 'data';
                       }
 
@@ -612,7 +599,7 @@ class _MainWebViewState extends State<MainWebView> {
 
                         if (await canLaunch(getUrl)) {
                           getAppUrl(String url) async {
-                            var parsingUrl = await platform.invokeMethod(
+                            var parsingUrl = await methodChannel.invokeMethod(
                                 'getAppUrl', <String, Object>{'url': url});
                             return parsingUrl;
                           }
@@ -624,7 +611,7 @@ class _MainWebViewState extends State<MainWebView> {
                         } else {
                           print("앱 설치되지 않음");
                           getMarketUrl(String url) async {
-                            var parsingURl = await platform.invokeMethod(
+                            var parsingURl = await methodChannel.invokeMethod(
                                 'getMarketUrl', <String, Object>{'url': url});
                             return parsingURl;
                           }
@@ -636,6 +623,42 @@ class _MainWebViewState extends State<MainWebView> {
                           return NavigationActionPolicy.CANCEL;
                         }
                       }
+
+
+
+                      // final url = navigationAction.request.url.toString();
+                      // print("유알엘 = $url");
+                      // if (isApplink(url) && url != "about:blank") {
+                      //   print("넘어간다");
+                      //   String getUrl = await getAppUrl(url);
+                      //
+                      //   if (await canLaunch(getUrl)) {
+                      //     getAppUrl(String url) async {
+                      //       var parsingUrl = await methodChannel.invokeMethod(
+                      //           'getAppUrl', <String, Object>{'url': url});
+                      //       print("canLaunch $url");
+                      //       // NavigationActionPolicy.CANCEL;
+                      //       return parsingUrl;
+                      //     }
+                      //     // NavigationActionPolicy.CANCEL;
+                      //     var value = await getAppUrl(url.toString());
+                      //     String getUrl = value.toString();
+                      //     await launchUrl(Uri.parse(getUrl));
+                      //   } else {
+                      //     print("앱 설치되지 않음"); //왜 안깔려잇다고 나오노?
+                      //     getMarketUrl(String url) async {
+                      //       var parsingURl = await methodChannel.invokeMethod(
+                      //           'getMarketUrl', <String, Object>{'url': url});
+                      //       // return NavigationActionPolicy.CANCEL;
+                      //       return parsingURl;
+                      //     }
+                      //     NavigationActionPolicy.CANCEL;
+                      //     var value = await getMarketUrl(url.toString());
+                      //     String marketUrl = value.toString();
+                      //     await launchUrl(Uri.parse(marketUrl));
+                      //     return NavigationActionPolicy.CANCEL;
+                      //   }
+                      // }
                     },
                     onLoadStart: (InAppWebViewController controller, uri) {
                       print("onLoadStart");
@@ -695,20 +718,18 @@ class _MainWebViewState extends State<MainWebView> {
                           // Flutter에서의 처리 로직
                           // return {SecondView};
 
-
-                          Navigator.push(context, CupertinoPageRoute(
-                              builder: (context) => PermissionScreen(
-                                  adAllowPushValue: adAllowPush,
-                                  notiPermissiontime: "$now")
-                          ));
-
+                          Navigator.push(
+                              context,
+                              CupertinoPageRoute(
+                                  builder: (context) => PermissionScreen(
+                                      adAllowPushValue: adAllowPush,
+                                      notiPermissiontime: "$now")));
 
                           // Navigator.of(context).push(CupertinoPageRoute(
                           //     builder: (context) => PermissionScreen(
                           //         adAllowPushValue: adAllowPush,
                           //         notiPermissiontime: "$now")
                           // ));
-
 
                           // Navigator.push(context, MaterialPageRoute (
                           //   builder: (context) => PermissionScreen(
