@@ -33,7 +33,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:kaltour_flutter/main.dart';
 import 'package:kaltour_flutter/Utilities/requestPermissions.dart';
 import 'package:kaltour_flutter/Model/RealUrl.dart';
-import 'package:kaltour_flutter/View/WebBridgeView.dart';
+import 'package:kaltour_flutter/Test/WebBridgeView.dart';
 import 'package:kaltour_flutter/Utilities/requestPermissions.dart';
 import 'package:kaltour_flutter/View/PushedWebView.dart';
 import 'package:webview_cookie_manager/webview_cookie_manager.dart';
@@ -66,6 +66,9 @@ class _MainWebViewState extends State<MainWebView> {
   // bool _notificationEnabled = true;
   String? _token;
   late InAppWebViewController webViewController;
+
+
+  String tempUrl = ""; // 푸시 URL 받을 임시 변수
 
   // late WebViewController _controller;
   String appUserAgent = "APP_WISHROOM_Android";
@@ -207,7 +210,6 @@ class _MainWebViewState extends State<MainWebView> {
               ),
               onPressed: () {
                 //거부시
-
                 setState(() {
                   print("광고성 앱푸신 거부 $adAllowPush");
                 });
@@ -438,11 +440,13 @@ class _MainWebViewState extends State<MainWebView> {
     String messageKey = message.data.keys.toString();
 
     if (url != null) {
-      print("메시지 키 입니다 = $messageKey");
-      Navigator.push(
-          context,
-          // MaterialPageRoute(builder: (context)=> PushWebView(url)),
-          MaterialPageRoute(builder: (context) => PushedWebView(myUrl: url)));
+      print("메시지 키 = $messageKey, URL = $url");
+      webViewController!.loadUrl(urlRequest: URLRequest(url: Uri.parse(url)));// url을 받으면 새로고침
+
+      // Navigator.push(
+      //     context,
+      //     // MaterialPageRoute(builder: (context)=> PushWebView(url)),
+      //     MaterialPageRoute(builder: (context) => PushedWebView(myUrl: url)));
     } else {
       print("url못받음");
     }
@@ -561,8 +565,10 @@ class _MainWebViewState extends State<MainWebView> {
                 children: [
                   InAppWebView(
                     initialUrlRequest: URLRequest(url: myUrl),
+
                     initialOptions: InAppWebViewGroupOptions(
                       crossPlatform: InAppWebViewOptions(
+                        // mediaPlaybackRequiresUserGesture: false, 여담용
                           // userAgent: customUserAgent,
                           useShouldOverrideUrlLoading: true),
                       android: AndroidInAppWebViewOptions(
