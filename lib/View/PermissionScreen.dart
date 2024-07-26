@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 import 'package:kaltour_flutter/Utilities/CheckAppVersion.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:carousel_slider/carousel_slider.dart';
 
 
 class PermissionScreen extends StatefulWidget {
@@ -17,7 +18,6 @@ class PermissionScreen extends StatefulWidget {
   String notiPermissiontime;
 
   // final ValueChanged<bool> onValueChanged;
-
   PermissionScreen({
     required this.adAllowPushValue,
     required this.notiPermissiontime,
@@ -38,6 +38,12 @@ class _PermissionScreenState extends State<PermissionScreen> {
   String? _token;
   String appVersion = "loading";
 
+  // final List<String> imgList = [
+  //   'https://www.kaltour.com/fileupload/Banner/Banner_6188(0).jpg',
+  //   'https://www.kaltour.com/fileupload/Banner/Banner_6178(5).jpg',
+  //   'https://www.kaltour.com/fileupload/Banner/Banner_6157(5).jpg',
+  // ];
+
   @override
   void initState() {
     super.initState();
@@ -51,7 +57,6 @@ class _PermissionScreenState extends State<PermissionScreen> {
     print("토큰 = $_token");
     checkAppVersion();
     loadAppVersion();
-
   }
 
   Future<void> loadAppVersion() async {
@@ -60,8 +65,6 @@ class _PermissionScreenState extends State<PermissionScreen> {
       appVersion = version;
     });
   }
-
-
   void _getToken() async {
     FirebaseMessaging messaging = FirebaseMessaging.instance;
     String? token = await messaging.getToken();
@@ -76,7 +79,6 @@ class _PermissionScreenState extends State<PermissionScreen> {
     setState(() {
       _adAllowPush = value;
     });
-
     if (_adAllowPush) {
       //광고성
       // _showSnackBar('광고성 켜졌습니다');
@@ -116,12 +118,10 @@ class _PermissionScreenState extends State<PermissionScreen> {
       _adAllowPush = (prefs.getBool('adAllowPush') ?? false);
     });
   }
-
   _saveSwitchValue(bool value) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.setBool('adAllowPush', value);
   }
-
   void _checkNotificationPermission() async {
     final status = await Permission.notification.status;
     setState(() {
@@ -129,7 +129,6 @@ class _PermissionScreenState extends State<PermissionScreen> {
       _isNotificationEnabled = _permissionStatus == PermissionStatus.granted;
     });
   }
-
   void _requestNotificationPermission() async {
     final status = await Permission.notification.request();
     setState(() {
@@ -137,7 +136,6 @@ class _PermissionScreenState extends State<PermissionScreen> {
       _isNotificationEnabled = _permissionStatus == PermissionStatus.granted;
     });
   }
-
   void checkPermissionStatus() async {
     PermissionStatus pushStatus = await Permission.notification.status;
     setState(() {
@@ -145,7 +143,6 @@ class _PermissionScreenState extends State<PermissionScreen> {
       isSwitchEnabled = pushStatus != PermissionStatus.denied;
     });
   }
-
   void _showAlert(BuildContext context) {
     showCupertinoDialog(
         context: context,
@@ -270,61 +267,65 @@ class _PermissionScreenState extends State<PermissionScreen> {
         //     thickness: 0.5,
         //   ),
         // ),
-        Container(
-          padding: EdgeInsets.only(left: 24, right: 18, top: 19, bottom: 18),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Text("특가 상품 및 이벤트 정보 알림",
-                      style: TextStyle(
-                        fontSize: 17.0,
-                      )),
-                  SizedBox(width: 70),
-                  // CupertinoSwitch(
-                  //   value: _adAllowPush,
-                  //   onChanged: isSwitchEnabled ? (value) {
-                  //     // _adAllowPush = value;
-                  //     setState(() {
-                  //       // _adAllowPush = value;
-                  //       _toggleSwitch(value);
-                  //       _adAllowPush = value;
-                  //       print("스위치 값 = $_adAllowPush");
-                  //     });
-                  //     _saveSwitchValue(value);
-                  //   } : null,
-                  //   activeColor: Colors.blue,
-                  //   trackColor: Colors.grey,
-                  //   // activeColor: CupertinoColors.activeBlue,
-                  // ),
+        Visibility(
+          visible: _permissionStatus.isGranted == true,
+          child: Container(
+            padding: EdgeInsets.only(left: 24, right: 18, top: 19, bottom: 18),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Text("특가 상품 및 이벤트 정보 알림",
+                        style: TextStyle(
+                          fontSize: 17.0,
+                        )),
+                    SizedBox(width: 70),
+                    // CupertinoSwitch(
+                    //   value: _adAllowPush,
+                    //   onChanged: isSwitchEnabled ? (value) {
+                    //     // _adAllowPush = value;
+                    //     setState(() {
+                    //       // _adAllowPush = value;
+                    //       _toggleSwitch(value);
+                    //       _adAllowPush = value;
+                    //       print("스위치 값 = $_adAllowPush");
+                    //     });
+                    //     _saveSwitchValue(value);
+                    //   } : null,
+                    //   activeColor: Colors.blue,
+                    //   trackColor: Colors.grey,
+                    //   // activeColor: CupertinoColors.activeBlue,
+                    // ),
 
-                  CupertinoSwitch(
-                      value: _adAllowPush,
-                      activeColor: Colors.blue,
-                      trackColor: Colors.grey,
-                      onChanged: (value) {
-                        setState(
-                          () {
-                            _adAllowPush = value;
-                            _toggleSwitch(value);
-                            _saveSwitchValue(value);
+                    CupertinoSwitch(
+                        value: _adAllowPush,
+                        activeColor: Colors.blue,
+                        trackColor: Colors.grey,
+                        onChanged: (value) {
+                          setState(
+                                () {
+                              _adAllowPush = value;
+                              _toggleSwitch(value);
+                              _saveSwitchValue(value);
 
-                            // _toggleSwitch(value);
-                          },
-                        );
-                        // widget.onValueChanged(value);
-                        // _saveSwitchValue(value)
-                      }),
-                ],
-              ),
-              // Visibility(
-              //   visible: _permissionStatus.isGranted == true,
-              //
-              // )
-            ],
+                              // _toggleSwitch(value);
+                            },
+                          );
+                          // widget.onValueChanged(value);
+                          // _saveSwitchValue(value)
+                        }),
+                  ],
+                ),
+                // Visibility(
+                //   visible: _permissionStatus.isGranted == true,
+                //
+                // )
+              ],
+            ),
           ),
         ),
+
         Container(
           child: Divider(
             color: Colors.grey,
@@ -350,7 +351,27 @@ class _PermissionScreenState extends State<PermissionScreen> {
               )
             ],
           )
-        )
+        ),
+        // Container(// 캐러샐 샘플 만들어봄
+        //   child:
+        //   CarouselSlider(
+        //     options: CarouselOptions(
+        //       height: 400.0,
+        //       enlargeCenterPage: true,
+        //       autoPlay: true,
+        //       aspectRatio: 16/9,
+        //       autoPlayCurve: Curves.fastEaseInToSlowEaseOut,
+        //       autoPlayAnimationDuration: Duration(milliseconds: 800)
+        //
+        //     ),
+        //     items: imgList.map((item) => Container(
+        //       child: Center(
+        //         child: Image.network(item, fit: BoxFit.cover, width: 1000),
+        //       ),
+        //     )).toList(),
+        //   )
+        //   ,
+        // )
       ]),
     );
   }

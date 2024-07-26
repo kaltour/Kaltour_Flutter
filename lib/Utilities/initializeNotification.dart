@@ -37,8 +37,8 @@ void initializeNotification() async {
       AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(const AndroidNotificationChannel(
 
-      'high_importance_channel',
-      'high_importance_notification',
+      'kaltour',
+      '한진관광',
       importance: Importance.high));
 
   await flutterLocalNotificationsPlugin.initialize(const InitializationSettings(

@@ -67,9 +67,6 @@ class _MainWebViewState extends State<MainWebView> {
   String? _token;
   late InAppWebViewController webViewController;
 
-
-  String tempUrl = ""; // 푸시 URL 받을 임시 변수
-
   // late WebViewController _controller;
   String appUserAgent = "APP_WISHROOM_Android";
   String webUserAgent =
@@ -87,9 +84,10 @@ class _MainWebViewState extends State<MainWebView> {
     print("MainWebView실행");
     setupInteractedMessage();
     // checkAppVersion();
-    initializeNotification();
+    _initializeNotification();
     loadFixedValue();
     print("토큰 = $_token");
+    _checkLoginUserStatus();
     // _androidOnly();
     // _showPromotionalAlert();
     // fetchData();
@@ -139,7 +137,7 @@ class _MainWebViewState extends State<MainWebView> {
   void _showNotification() async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
-      'My_Channel_ID',
+      'kaltour',
       'My_Channel',
       // 'This is an example notification channel',
       importance: Importance.high,
@@ -164,7 +162,7 @@ class _MainWebViewState extends State<MainWebView> {
   //   });
   // }
 
-  void toggleFixedValue() {
+  void _toggleFixedValue() {
     setState(() {
       adAllowPush = !adAllowPush; // 값 토글
       saveFixedValue(adAllowPush); // 변경된 값 저장하기
@@ -288,7 +286,9 @@ class _MainWebViewState extends State<MainWebView> {
       _token = token;
     });
     print("FCM Token(토큰) : $_token");
+
   }
+
 
   // void check_time(BuildContext context) {
   //   //context는 Snackbar용, 다른 방식으로 출력할거면 필요없음.
@@ -301,6 +301,7 @@ class _MainWebViewState extends State<MainWebView> {
   //     duration: Duration(seconds: 20),
   //   ));
   // }
+  //
 
   void _requestPermissions() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -353,7 +354,7 @@ class _MainWebViewState extends State<MainWebView> {
     // }
   }
 
-  void initializeNotification() async {
+  void _initializeNotification() async {
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
     final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -361,7 +362,7 @@ class _MainWebViewState extends State<MainWebView> {
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(const AndroidNotificationChannel(
-            'high_importance_channel', 'high_importance_notification',
+            'kaltour', '한진관광',
             importance: Importance.high));
 
     await flutterLocalNotificationsPlugin
@@ -372,7 +373,7 @@ class _MainWebViewState extends State<MainWebView> {
 
   void _createNotificationChannel() async {
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
-        "My_Channel_ID", "My_Channel",
+        "kaltour", "My_Channel",
         importance: Importance.high);
 
     final NotificationDetails platformChannelSpecifics = NotificationDetails(
@@ -430,7 +431,7 @@ class _MainWebViewState extends State<MainWebView> {
       return await methodChannel
           .invokeMethod('getAppUrl', <String, Object>{'url': url});
     } else {
-      print("아이오에스");
+      print("iOS");
       return url;
     }
   }
@@ -441,12 +442,11 @@ class _MainWebViewState extends State<MainWebView> {
 
     if (url != null) {
       print("메시지 키 = $messageKey, URL = $url");
-      webViewController!.loadUrl(urlRequest: URLRequest(url: Uri.parse(url)));// url을 받으면 새로고침
+      // webViewController!.loadUrl(urlRequest: URLRequest(url: Uri.parse(url)));// url을 받으면 새로고침
 
-      // Navigator.push(
-      //     context,
-      //     // MaterialPageRoute(builder: (context)=> PushWebView(url)),
-      //     MaterialPageRoute(builder: (context) => PushedWebView(myUrl: url)));
+      Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => PushedWebView(myUrl: url)));// 이 코드로해야 백그라운드에서 잘 받아짐..
     } else {
       print("url못받음");
     }
@@ -534,6 +534,61 @@ class _MainWebViewState extends State<MainWebView> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool('adAllowPush', value); // 값 저장하기
   }
+
+  Future<void> _checkLoginUserStatus() async {
+    final cookieManager = CookieManager.instance();
+    final cookies = await cookieManager.getCookies(url: Uri.parse('https://m.kaltour.com'));
+    final userIdCookie = cookies.firstWhere(
+          (cookie) => cookie.name == 'KALTOUR_USER_ID',
+      orElse: () => Cookie(
+        name: 'KALTOUR_USER_ID',
+
+        value: '',
+        domain: '.kaltour.com',
+      ),
+    );
+
+    final userMemCookie = cookies.firstWhere(
+          (cookie) => cookie.name == 'KALTOUR_USER_MEM_NUMBER',
+      orElse: () => Cookie(
+        name: 'KALTOUR_USER_MEM_NUMBER',
+
+        value: '',
+        domain: '.kaltour.com',
+      ),
+    );
+
+    if (userIdCookie.value.isNotEmpty || userMemCookie.value.isNotEmpty) {
+      print('유저 User is logged in with ID: ${userIdCookie.value}, MemNum: ${userMemCookie.value}');
+      // 여기서 추가적인 로그인 처리 로직을 구현할 수 있습니다.
+    } else {
+      print('유저 User is not logged in.');
+    }
+  }
+
+  // Future<void> _checkLoginMemNumStatus() async {
+  //   final cookieManager = CookieManager.instance();
+  //   final cookies = await cookieManager.getCookies(url: Uri.parse('https://m.kaltour.com'));
+  //   final loggedInCookie = cookies.firstWhere(
+  //         (cookie) => cookie.name == 'KALTOUR_USER_MEM_NUMBER',
+  //     orElse: () => Cookie(
+  //       name: 'KALTOUR_USER_MEM_NUMBER',
+  //
+  //       value: '',
+  //       domain: '.kaltour.com',
+  //     ),
+  //   );
+  //
+  //   if (loggedInCookie.value.isNotEmpty|| loggedInCookie.value.) {
+  //     print('유저 User is logged in with MemNum: ${loggedInCookie.value}');
+  //     // 여기서 추가적인 로그인 처리 로직을 구현할 수 있습니다.
+  //   } else {
+  //     print('유저 UserMemNum is not logged in.');
+  //   }
+  // }
+
+
+
 
   // Future<void> _setPromotionalAllowed(bool allowed) async {
   //   SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -670,6 +725,8 @@ class _MainWebViewState extends State<MainWebView> {
                       print("onLoadStart");
                       setState(() {
                         myUrl = uri!;
+                        _checkLoginUserStatus();
+                        // _checkLoginMemNumStatus();
                       });
                       // webViewController!.addJavaScriptHandler(
                       //   handlerName: 'appView',
@@ -690,12 +747,14 @@ class _MainWebViewState extends State<MainWebView> {
                       //웹 페이지 로딩이 완료될 때 호출되는 콜백입니다.
 
                       setState(() {
+                        print("onLoadStop");
                         myUrl = uri!;
                       });
                     },
                     onProgressChanged: (controller, progress) {
                       // if (progress == 100) {pullToRefreshController.endRefreshing();}
                       setState(() {
+                        print("onProgressChanged");
                         this.progress = progress / 100;
                       });
                     },
@@ -713,6 +772,15 @@ class _MainWebViewState extends State<MainWebView> {
                         // expiresDate: 99,
                         // maxAge: 99,
                       );
+                      //
+                      // await CookieManager.instance().setCookie(
+                      //   url: Uri.parse("uri"),
+                      //   name: "KALTOUR_USER_ID",
+                      //   value: "value",
+                      //   domain: ".kaltour.com",
+                      //   isSecure: false,
+                      //   isHttpOnly: false,
+                      // );
 
                       webViewController = controller;
                       webViewController!.addJavaScriptHandler(
