@@ -39,7 +39,7 @@ import 'package:kaltour_flutter/View/PushedWebView.dart';
 import 'package:webview_cookie_manager/webview_cookie_manager.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:path_provider/path_provider.dart';
-
+import 'package:tosspayments_widget_sdk_flutter/model/tosspayments_url.dart';
 // const platform = MethodChannel('androidIntent');
 const MethodChannel methodChannel = MethodChannel('androidIntent');
 
@@ -286,9 +286,7 @@ class _MainWebViewState extends State<MainWebView> {
       _token = token;
     });
     print("FCM Token(토큰) : $_token");
-
   }
-
 
   // void check_time(BuildContext context) {
   //   //context는 Snackbar용, 다른 방식으로 출력할거면 필요없음.
@@ -446,7 +444,9 @@ class _MainWebViewState extends State<MainWebView> {
 
       Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => PushedWebView(myUrl: url)));// 이 코드로해야 백그라운드에서 잘 받아짐..
+          MaterialPageRoute(
+              builder: (context) =>
+                  PushedWebView(myUrl: url))); // 이 코드로해야 백그라운드에서 잘 받아짐..
     } else {
       print("url못받음");
     }
@@ -537,29 +537,29 @@ class _MainWebViewState extends State<MainWebView> {
 
   Future<void> _checkLoginUserStatus() async {
     final cookieManager = CookieManager.instance();
-    final cookies = await cookieManager.getCookies(url: Uri.parse('https://m.kaltour.com'));
+    final cookies =
+        await cookieManager.getCookies(url: Uri.parse('https://m.kaltour.com'));
     final userIdCookie = cookies.firstWhere(
-          (cookie) => cookie.name == 'KALTOUR_USER_ID',
+      (cookie) => cookie.name == 'KALTOUR_USER_ID',
       orElse: () => Cookie(
         name: 'KALTOUR_USER_ID',
-
         value: '',
         domain: '.kaltour.com',
       ),
     );
 
     final userMemCookie = cookies.firstWhere(
-          (cookie) => cookie.name == 'KALTOUR_USER_MEM_NUMBER',
+      (cookie) => cookie.name == 'KALTOUR_USER_MEM_NUMBER',
       orElse: () => Cookie(
         name: 'KALTOUR_USER_MEM_NUMBER',
-
         value: '',
         domain: '.kaltour.com',
       ),
     );
 
     if (userIdCookie.value.isNotEmpty || userMemCookie.value.isNotEmpty) {
-      print('유저 User is logged in with ID: ${userIdCookie.value}, MemNum: ${userMemCookie.value}');
+      print(
+          '유저 User is logged in with ID: ${userIdCookie.value}, MemNum: ${userMemCookie.value}');
       // 여기서 추가적인 로그인 처리 로직을 구현할 수 있습니다.
     } else {
       print('유저 User is not logged in.');
@@ -586,9 +586,6 @@ class _MainWebViewState extends State<MainWebView> {
   //     print('유저 UserMemNum is not logged in.');
   //   }
   // }
-
-
-
 
   // Future<void> _setPromotionalAllowed(bool allowed) async {
   //   SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -620,10 +617,9 @@ class _MainWebViewState extends State<MainWebView> {
                 children: [
                   InAppWebView(
                     initialUrlRequest: URLRequest(url: myUrl),
-
                     initialOptions: InAppWebViewGroupOptions(
                       crossPlatform: InAppWebViewOptions(
-                        // mediaPlaybackRequiresUserGesture: false, 여담용
+                          // mediaPlaybackRequiresUserGesture: false, 여담용
                           // userAgent: customUserAgent,
                           useShouldOverrideUrlLoading: true),
                       android: AndroidInAppWebViewOptions(
@@ -637,12 +633,37 @@ class _MainWebViewState extends State<MainWebView> {
                     shouldOverrideUrlLoading:
                         (controller, navigationAction) async {
 
+                          tossPaymentsWebview(url) {
+                            final appScheme = ConvertUrl(url); // Intent URL을 앱 스킴 URL로 변환
+
+                            if (appScheme.isAppLink()) {                                  // 앱 스킴 URL인지 확인
+                              appScheme.launchApp(mode: LaunchMode.externalApplication);  // 앱 설치 상태에 따라 앱 실행 또는 마켓으로 이동
+                              return NavigationDecision.prevent;
+                            }
+                          }
+
+                      var uri = navigationAction.request.url;
+                      if (uri == null) {
+                        return NavigationActionPolicy.ALLOW;
+
+                      }
+
+                      if (uri.scheme == "mailto" ||
+                          uri.scheme == "tel" ||
+                          uri.scheme == "sms"
+
+                      ) {
+                        if(await canLaunchUrl(uri)) {
+                          await launchUrl(uri);
+                          return NavigationActionPolicy.CANCEL;
+                        }
+
+                      }
                       // await controller.setOptions(options: InAppWebViewGroupOptions(crossPlatform: InAppWebViewOptions(
                       //   userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
                       // )));
                       bool isApplink(String url) {
                         final appScheme = Uri.parse(url).scheme;
-                        var uri = navigationAction.request.url;
 
                         print("앱스킴 = $appScheme"); //https
                         return appScheme != 'http' &&
@@ -651,40 +672,73 @@ class _MainWebViewState extends State<MainWebView> {
                             // appScheme != 'intent://' &&
                             appScheme != 'data';
                       }
-
                       final url = navigationAction.request.url.toString();
                       print("유알엘 = $url");
-                      if (isApplink(url) && url != "about:blank") {
-                        print("넘어간다");
-                        String getUrl = await getAppUrl(url);
 
-                        if (await canLaunch(getUrl)) {
-                          getAppUrl(String url) async {
-                            var parsingUrl = await methodChannel.invokeMethod(
-                                'getAppUrl', <String, Object>{'url': url});
-                            return parsingUrl;
-                          }
-                          NavigationActionPolicy.CANCEL;
-                          var value = await getAppUrl(url.toString());
-                          String getUrl = value.toString();
-                          await launchUrl(Uri.parse(getUrl));
-                          return NavigationActionPolicy.CANCEL;
-                        } else {
-                          print("앱 설치되지 않음");
-                          getMarketUrl(String url) async {
-                            var parsingURl = await methodChannel.invokeMethod(
-                                'getMarketUrl', <String, Object>{'url': url});
-                            return parsingURl;
-                          }
+                      if( Platform.isAndroid) {
 
-                          NavigationActionPolicy.CANCEL;
-                          var value = await getMarketUrl(url.toString());
-                          String marketUrl = value.toString();
-                          await launchUrl(Uri.parse(marketUrl));
-                          return NavigationActionPolicy.CANCEL;
+                        if (isApplink(url) && url != "about:blank") {
+                          print("넘어간다");
+                          String getUrl = await getAppUrl(url);
+
+                          if (await canLaunch(getUrl)) {
+                            getAppUrl(String url) async {
+                              var parsingUrl = await methodChannel.invokeMethod(
+                                  'getAppUrl', <String, Object>{'url': url});
+                              return parsingUrl;
+                            }
+
+                            NavigationActionPolicy.CANCEL;
+                            var value = await getAppUrl(url.toString());
+                            String getUrl = value.toString();
+                            await launchUrl(Uri.parse(getUrl));
+                            return NavigationActionPolicy.CANCEL;
+                          } else {
+                            print("앱 설치되지 않음");
+                            getMarketUrl(String url) async {
+                              var parsingURl = await methodChannel.invokeMethod(
+                                  'getMarketUrl', <String, Object>{'url': url});
+                              return parsingURl;
+                            }
+
+                            NavigationActionPolicy.CANCEL;
+                            var value = await getMarketUrl(url.toString());
+                            String marketUrl = value.toString();
+                            await launchUrl(Uri.parse(marketUrl));
+                            return NavigationActionPolicy.CANCEL;
+                          }
                         }
-                      }
 
+                      }else if (Platform.isIOS) {
+                        var value = await getAppUrl(url.toString());
+                        String getUrl = value.toString();
+                        print("토스가 실행");
+                        tossPaymentsWebview(getUrl);
+
+                        // if(getUrl != null && uri.scheme == "kb-acp://") {
+                        //   if(await canLaunchUrl(uri)){
+                        //     await launchUrl(uri);
+                        //
+                        //   }else {
+                        //     print("열수없음");
+                        //   }
+                        //
+                        // }
+
+
+
+                        // print("겟 = $getUrl");
+                        // await launchUrl(Uri.parse(getUrl));
+                        // return NavigationActionPolicy.CANCEL;
+                        //
+                        // String getUrl = await getAppUrl(url);
+                        // if(await canLaunch(getUrl)) {
+                        //   await launchUrl(Uri.parse(getUrl));
+                        //
+                        // }
+
+
+                      }
 
 
                       // final url = navigationAction.request.url.toString();
