@@ -39,6 +39,7 @@ import 'package:kaltour_flutter/View/PushedWebView.dart';
 import 'package:webview_cookie_manager/webview_cookie_manager.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:kaltour_flutter/Utilities/CheckLoginUserStatus.dart';
 import 'package:tosspayments_widget_sdk_flutter/model/tosspayments_url.dart';
 // const platform = MethodChannel('androidIntent');
 const MethodChannel methodChannel = MethodChannel('androidIntent');
@@ -65,7 +66,8 @@ class _MainWebViewState extends State<MainWebView> {
   late bool adAllowPush = false; //광고성 푸시 허용/비허용 변수
   // bool _notificationEnabled = true;
   String? _token;
-  late InAppWebViewController webViewController;
+  String? _initialUrl;
+  late InAppWebViewController _webViewController;
 
   // late WebViewController _controller;
   String appUserAgent = "APP_WISHROOM_Android";
@@ -76,7 +78,7 @@ class _MainWebViewState extends State<MainWebView> {
   // final CookieManager cookieManager = CookieManager.instance();
 
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
-
+  FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   @override
   void initState() {
     super.initState();
@@ -87,7 +89,10 @@ class _MainWebViewState extends State<MainWebView> {
     _initializeNotification();
     loadFixedValue();
     print("토큰 = $_token");
-    _checkLoginUserStatus();
+    // _checkLoginUserStatus();
+    _getToken();
+    checkLoginUserStatus();
+
     // _androidOnly();
     // _showPromotionalAlert();
     // fetchData();
@@ -390,8 +395,8 @@ class _MainWebViewState extends State<MainWebView> {
   }
 
   Future<bool> _goBack(BuildContext context) async {
-    if (await webViewController.canGoBack()) {
-      webViewController.goBack();
+    if (await _webViewController.canGoBack()) {
+      _webViewController.goBack();
       return Future.value(false);
     } else {
       return Future.value(true);
@@ -422,6 +427,21 @@ class _MainWebViewState extends State<MainWebView> {
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
   }
 
+  void _initializeFirebaseMessaging() {
+    _firebaseMessaging.requestPermission();
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      _handleMessage(message);
+    });
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+    // 앱이 종료된 상태에서 알림을 클릭하여 시작된 경우
+    FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
+      if (message != null) {
+        _handleMessage(message);
+      }
+    });
+  }
+
   Future<String> getAppUrl(String url) async {
     //앱 URL 받기
     if (Platform.isAndroid) {
@@ -435,20 +455,23 @@ class _MainWebViewState extends State<MainWebView> {
   }
 
   void _handleMessage(RemoteMessage message) {
-    String url = message.data["ActionURL"];
+    String? url = message.data["ActionURL"];
     String messageKey = message.data.keys.toString();
 
-    if (url != null) {
+    if (url != null && url.isNotEmpty) {
       print("메시지 키 = $messageKey, URL = $url");
-      // webViewController!.loadUrl(urlRequest: URLRequest(url: Uri.parse(url)));// url을 받으면 새로고침
-
-      Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) =>
-                  PushedWebView(myUrl: url))); // 이 코드로해야 백그라운드에서 잘 받아짐..
+      // WebViewController를 사용하여 URL 새로고침
+      if (_webViewController != null) {
+        _webViewController!.loadUrl(urlRequest: URLRequest(url: Uri.parse(url)));
+      } else {
+        // WebViewController가 null인 경우 URL을 저장하여 나중에 로드
+        setState(() {
+          print("_handleMessage에서 이동");
+          _initialUrl = url;
+        });
+      }
     } else {
-      print("url못받음");
+      print("url 못받음");
     }
   }
 
@@ -535,36 +558,38 @@ class _MainWebViewState extends State<MainWebView> {
     await prefs.setBool('adAllowPush', value); // 값 저장하기
   }
 
-  Future<void> _checkLoginUserStatus() async {
-    final cookieManager = CookieManager.instance();
-    final cookies =
-        await cookieManager.getCookies(url: Uri.parse('https://m.kaltour.com'));
-    final userIdCookie = cookies.firstWhere(
-      (cookie) => cookie.name == 'KALTOUR_USER_ID',
-      orElse: () => Cookie(
-        name: 'KALTOUR_USER_ID',
-        value: '',
-        domain: '.kaltour.com',
-      ),
-    );
 
-    final userMemCookie = cookies.firstWhere(
-      (cookie) => cookie.name == 'KALTOUR_USER_MEM_NUMBER',
-      orElse: () => Cookie(
-        name: 'KALTOUR_USER_MEM_NUMBER',
-        value: '',
-        domain: '.kaltour.com',
-      ),
-    );
 
-    if (userIdCookie.value.isNotEmpty || userMemCookie.value.isNotEmpty) {
-      print(
-          '유저 User is logged in with ID: ${userIdCookie.value}, MemNum: ${userMemCookie.value}');
-      // 여기서 추가적인 로그인 처리 로직을 구현할 수 있습니다.
-    } else {
-      print('유저 User is not logged in.');
-    }
-  }
+  // Future<void> _checkLoginUserStatus() async {
+  //   final cookieManager = CookieManager.instance();
+  //   final cookies =
+  //       await cookieManager.getCookies(url: Uri.parse('https://m.kaltour.com'));
+  //   final userIdCookie = cookies.firstWhere(
+  //     (cookie) => cookie.name == 'KALTOUR_USER_ID',
+  //     orElse: () => Cookie(
+  //       name: 'KALTOUR_USER_ID',
+  //       value: '',
+  //       domain: '.kaltour.com',
+  //     ),
+  //   );
+  //
+  //   final userMemCookie = cookies.firstWhere(
+  //     (cookie) => cookie.name == 'KALTOUR_USER_MEM_NUMBER',
+  //     orElse: () => Cookie(
+  //       name: 'KALTOUR_USER_MEM_NUMBER',
+  //       value: '',
+  //       domain: '.kaltour.com',
+  //     ),
+  //   );
+  //
+  //   if (userIdCookie.value.isNotEmpty || userMemCookie.value.isNotEmpty) {
+  //     print(
+  //         '유저 User is logged in with ID: ${userIdCookie.value}, MemNum: ${userMemCookie.value}');
+  //     // 여기서 추가적인 로그인 처리 로직을 구현할 수 있습니다.
+  //   } else {
+  //     print('유저 User is not logged in.');
+  //   }
+  // }
 
   // Future<void> _checkLoginMemNumStatus() async {
   //   final cookieManager = CookieManager.instance();
@@ -597,6 +622,8 @@ class _MainWebViewState extends State<MainWebView> {
   //   return prefs.getBool('promotional_notifications') ?? false;
   // }
 
+
+
   @override
   Widget build(BuildContext context) {
     // _configureFirebaseMessaging(context);
@@ -616,7 +643,7 @@ class _MainWebViewState extends State<MainWebView> {
                   child: Stack(
                 children: [
                   InAppWebView(
-                    initialUrlRequest: URLRequest(url: myUrl),
+                    initialUrlRequest: URLRequest(url: Uri.parse(_initialUrl ?? "$myUrl")),
                     initialOptions: InAppWebViewGroupOptions(
                       crossPlatform: InAppWebViewOptions(
                           // mediaPlaybackRequiresUserGesture: false, 여담용
@@ -712,7 +739,6 @@ class _MainWebViewState extends State<MainWebView> {
                       }else if (Platform.isIOS) {
                         var value = await getAppUrl(url.toString());
                         String getUrl = value.toString();
-                        print("토스가 실행");
                         tossPaymentsWebview(getUrl);
 
                         // if(getUrl != null && uri.scheme == "kb-acp://") {
@@ -779,7 +805,7 @@ class _MainWebViewState extends State<MainWebView> {
                       print("onLoadStart");
                       setState(() {
                         myUrl = uri!;
-                        _checkLoginUserStatus();
+                        checkLoginUserStatus();
                         // _checkLoginMemNumStatus();
                       });
                       // webViewController!.addJavaScriptHandler(
@@ -812,10 +838,19 @@ class _MainWebViewState extends State<MainWebView> {
                         this.progress = progress / 100;
                       });
                     },
-                    onWebViewCreated: (controller) async {
+                    onWebViewCreated: (InAppWebViewController webViewController) async {
                       //여기다 setcookie, WebView가 생성될 때 호출되는 콜백입니다. InAppWebViewController를 초기화하거나 설정할 수 있습니다.
                       print("onWebViewCreated");
                       // _setCookie();
+                      _webViewController = webViewController;
+                      if (_initialUrl != null) {
+                        webViewController!.loadUrl(urlRequest: URLRequest(url: Uri.parse(_initialUrl!)));
+                        setState(() {
+                          print("onWebViewCreated에서 이동");
+                          _initialUrl = null; // 초기 URL을 로드한 후 초기화
+                        });
+                      }
+
                       await CookieManager.instance().setCookie(
                         url: Uri.parse("https://m.kaltour.com/"),
                         name: "appCookie",
@@ -836,7 +871,7 @@ class _MainWebViewState extends State<MainWebView> {
                       //   isHttpOnly: false,
                       // );
 
-                      webViewController = controller;
+                      // webViewController = controller;
                       webViewController!.addJavaScriptHandler(
                         handlerName: 'appView',
                         callback: (args) {

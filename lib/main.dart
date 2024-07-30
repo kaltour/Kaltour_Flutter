@@ -58,7 +58,7 @@ void main() async { //시작점
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   // FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  sendToken(); // 토큰 받아서 서버에 전송
+  // sendToken(); // 토큰 받아서 서버에 전송
   // final myToken = await FirebaseMessaging.instance.getToken();
   // print("나의 토큰: $myToken");
   // FirebaseMessaging.instance.requestPermission( //푸시 알림 토스트
