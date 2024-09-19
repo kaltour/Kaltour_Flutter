@@ -41,6 +41,9 @@ import 'package:cookie_jar/cookie_jar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:kaltour_flutter/Utilities/CheckLoginUserStatus.dart';
 import 'package:tosspayments_widget_sdk_flutter/model/tosspayments_url.dart';
+import 'package:kaltour_flutter/Utilities/CheckAppVersion.dart';
+
+
 // const platform = MethodChannel('androidIntent');
 const MethodChannel methodChannel = MethodChannel('androidIntent');
 
@@ -67,6 +70,7 @@ class _MainWebViewState extends State<MainWebView> {
   // bool _notificationEnabled = true;
   String? _token;
   String? _initialUrl;
+  bool isWebViewReady = false;  // WebView가 준비되었는지 여부를 나타내는 플래그
   late InAppWebViewController _webViewController;
 
   // late WebViewController _controller;
@@ -76,6 +80,7 @@ class _MainWebViewState extends State<MainWebView> {
 
   // final _cookieManager = WebViewCookieManager();
   // final CookieManager cookieManager = CookieManager.instance();
+  final CookieManager _cookieManager = CookieManager.instance();
 
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
   FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
@@ -85,14 +90,13 @@ class _MainWebViewState extends State<MainWebView> {
     _requestPermissions();
     print("MainWebView실행");
     setupInteractedMessage();
-    // checkAppVersion();
+    checkAppVersion();
     _initializeNotification();
-    loadFixedValue();
-    print("토큰 = $_token");
+    _loadFixedValue();
+    print("FCM 토큰 = $_token");
     // _checkLoginUserStatus();
     _getToken();
     checkLoginUserStatus();
-
     // _androidOnly();
     // _showPromotionalAlert();
     // fetchData();
@@ -106,6 +110,7 @@ class _MainWebViewState extends State<MainWebView> {
     //
     // flutterLocalNotificationsPlugin.initialize(initializationSettings);
     // _createNotificationChannel();
+    // handleInitialMessage();
   }
 
   void _fetchData() async {
@@ -254,8 +259,9 @@ class _MainWebViewState extends State<MainWebView> {
                   adAllowPush = true;
                   print("MainWeb에서 푸시 = $adAllowPush");
                   saveFixedValue(adAllowPush);
+                  _getToken();
                 });
-                _getToken();
+
                 var now = new DateTime
                     .now(); //반드시 다른 함수에서 해야함, Mypage같은 클래스에서는 사용 불가능
                 String formatDate =
@@ -285,12 +291,24 @@ class _MainWebViewState extends State<MainWebView> {
   }
 
   void _getToken() async {
-    FirebaseMessaging messaging = FirebaseMessaging.instance;
-    String? token = await messaging.getToken();
-    setState(() {
-      _token = token;
-    });
-    print("FCM Token(토큰) : $_token");
+
+
+    try {
+      FirebaseMessaging messaging = FirebaseMessaging.instance;
+      String? token = await messaging.getToken();
+      setState(() {
+        _token = token;
+      });
+      print("FCM Token: $_token");
+    }catch(e) {
+      print("Error getting FCM token: $e");
+    }
+    // FirebaseMessaging messaging = FirebaseMessaging.instance;
+    // String? token = await messaging.getToken();
+    // setState(() {
+    //   _token = token;
+    // });
+    // print("FCM Token(토큰) : $_token");
   }
 
   // void check_time(BuildContext context) {
@@ -307,6 +325,7 @@ class _MainWebViewState extends State<MainWebView> {
   //
 
   void _requestPermissions() async {
+    print("_requestPermissions 실행");
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool isPermissionGranted = prefs.getBool('isPermissionGranted') ?? false;
 
@@ -409,8 +428,11 @@ class _MainWebViewState extends State<MainWebView> {
         mediaPlaybackRequiresUserGesture: false, // 미디어 자동 재생
         javaScriptEnabled: true, // 자바스크립트 실행 여부
         javaScriptCanOpenWindowsAutomatically: true,
+
       ),
       android: AndroidInAppWebViewOptions(
+        domStorageEnabled: true,
+
         useHybridComposition: true,
       ));
 
@@ -454,24 +476,83 @@ class _MainWebViewState extends State<MainWebView> {
     }
   }
 
+  Future<void> handleInitialMessage() async {
+    RemoteMessage? initialMessage =
+        await FirebaseMessaging.instance.getInitialMessage();
+    if (initialMessage != null) {
+      String? url = initialMessage.data["ActionURL"];
+      String messageKey = initialMessage.data.keys.toString();
+
+      // loadUrlInWebView(url);
+      print("씨벌 $url, $messageKey");
+
+      if (url != null && url.isNotEmpty) {
+        if (isWebViewReady) {
+          print("url 있음");
+          loadUrlInWebView(url);
+        } else {
+          setState(() {
+            _initialUrl = url;
+          });
+        }
+      }
+    } else {
+      print("없음 씨발");
+    }
+  }
+
+  void loadUrlInWebView(String url) {
+    if (_webViewController != null) {
+      _webViewController!.loadUrl(urlRequest: URLRequest(url: Uri.parse(url)));
+
+      print("loadUrlInWebView의 $url");
+    } else {
+      setState(() {
+        _initialUrl = url;
+      });
+    }
+  }
   void _handleMessage(RemoteMessage message) {
     String? url = message.data["ActionURL"];
     String messageKey = message.data.keys.toString();
 
-    if (url != null && url.isNotEmpty) {
-      print("메시지 키 = $messageKey, URL = $url");
-      // WebViewController를 사용하여 URL 새로고침
-      if (_webViewController != null) {
-        _webViewController!.loadUrl(urlRequest: URLRequest(url: Uri.parse(url)));
-      } else {
-        // WebViewController가 null인 경우 URL을 저장하여 나중에 로드
-        setState(() {
-          print("_handleMessage에서 이동");
-          _initialUrl = url;
-        });
-      }
+    if(Platform.isAndroid){
+      if (url != null && url.isNotEmpty) {
+        print("메시지 키 = $messageKey, URL = $url");
+        // WebViewController를 사용하여 URL 새로고침
+        if (_webViewController != null) {
+          if(Platform.isAndroid) {
+            _webViewController!.loadUrl(urlRequest: URLRequest(url: Uri.parse(url)));
+          }
+          // else { //iOS일 경우
+          //   Navigator.push(
+          //       context,
+          //       // MaterialPageRoute(builder: (context)=> PushWebView(url)),
+          //       MaterialPageRoute(builder: (context) => PushedWebView(myUrl: url)));
+          // }
+
+        } else {
+
+          // WebViewController가 null인 경우 URL을 저장하여 나중에 로드
+          setState(() {
+            print("_handleMessage에서 이동");
+            _initialUrl = url;
+          });
+        }
+    }
+
     } else {
-      print("url 못받음");
+      if (url != null) {
+        print("iOS 메시지 키 입니다 = $messageKey");
+
+        _webViewController!.loadUrl(urlRequest: URLRequest(url: Uri.parse(url)));
+        // Navigator.push(
+        //     context,
+        //     // MaterialPageRoute(builder: (context)=> PushWebView(url)),
+        //     MaterialPageRoute(builder: (context) => PushedWebView(myUrl: url)));
+      } else {
+        print("url못받음");
+      }
     }
   }
 
@@ -513,11 +594,20 @@ class _MainWebViewState extends State<MainWebView> {
             actions: <Widget>[
               ElevatedButton(
                   onPressed: () async {
-                    const url =
-                        'https://play.google.com/store/apps/details?id=m.kaltour.ver2';
-                    if (await canLaunchUrl(Uri.parse(url))) {
-                      await launchUrl(Uri.parse(url));
+                    if(Platform.isAndroid) {
+                      const url =
+                          'https://play.google.com/store/apps/details?id=m.kaltour.ver2';
+                      if (await canLaunchUrl(Uri.parse(url))) {
+                        await launchUrl(Uri.parse(url));
+                      }
+                    }else if (Platform.isIOS) {
+                      const url = "https://apps.apple.com/kr/app/%ED%95%9C%EC%A7%84%EA%B4%80%EA%B4%91/id1068782555";
+                      if (await canLaunchUrl(Uri.parse(url))) {
+                        await launchUrl(Uri.parse(url));
+                      }
+
                     }
+
                   },
                   style: const ButtonStyle(
                       backgroundColor: MaterialStatePropertyAll<Color>(
@@ -545,7 +635,7 @@ class _MainWebViewState extends State<MainWebView> {
         });
   }
 
-  Future<void> loadFixedValue() async {
+  Future<void> _loadFixedValue() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       adAllowPush =
