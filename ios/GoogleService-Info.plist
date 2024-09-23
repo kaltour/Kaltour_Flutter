@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CLIENT_ID</key>
+	<string>690602777560-0sstu36q7jukatcojlojephgmb0o8k89.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.690602777560-0sstu36q7jukatcojlojephgmb0o8k89</string>
 	<key>API_KEY</key>
 	<string>AIzaSyDc2RCWuXb8itqrfkkHUO_n1NXNMjgXZWE</string>
 	<key>GCM_SENDER_ID</key>
@@ -9,7 +13,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.example.kaltourHybrid</string>
+	<string>Kaltour.HanjinTravel</string>
 	<key>PROJECT_ID</key>
 	<string>webpush-82874</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +29,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:690602777560:ios:78563702b54a15430630ad</string>
+	<string>1:690602777560:ios:8018b47444ae945e0630ad</string>
 </dict>
 </plist>

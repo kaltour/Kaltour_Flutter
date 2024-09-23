@@ -69,7 +69,7 @@ class _MainWebViewState extends State<MainWebView> {
   late bool adAllowPush = false; //광고성 푸시 허용/비허용 변수
   // bool _notificationEnabled = true;
   String? _token;
-  String? _initialUrl;
+  String? _initialUrl = "https://m.kaltour.com";
   bool isWebViewReady = false;  // WebView가 준비되었는지 여부를 나타내는 플래그
   late InAppWebViewController _webViewController;
 
@@ -436,7 +436,7 @@ class _MainWebViewState extends State<MainWebView> {
         useHybridComposition: true,
       ));
 
-  Future<void> setupInteractedMessage() async {
+  Future<void> setupInteractedMessage() async { //앱이 종료된 상태에서 푸시 알림 클릭하여 열릴 경우 메세지 가져옴
     RemoteMessage? initialMessage =
         await FirebaseMessaging.instance.getInitialMessage();
 
@@ -446,23 +446,23 @@ class _MainWebViewState extends State<MainWebView> {
 
       _handleMessage(initialMessage);
     }
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);// 앱이 백그라운드 상태에서 푸시 알림 클릭 하여 열릴 경우 메세지 스트림을 통해 처리
   }
 
-  void _initializeFirebaseMessaging() {
-    _firebaseMessaging.requestPermission();
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      _handleMessage(message);
-    });
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-    // 앱이 종료된 상태에서 알림을 클릭하여 시작된 경우
-    FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
-      if (message != null) {
-        _handleMessage(message);
-      }
-    });
-  }
+  // void _initializeFirebaseMessaging() {
+  //   _firebaseMessaging.requestPermission();
+  //   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+  //     _handleMessage(message);
+  //   });
+  //   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  //
+  //   // 앱이 종료된 상태에서 알림을 클릭하여 시작된 경우
+  //   FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
+  //     if (message != null) {
+  //       _handleMessage(message);
+  //     }
+  //   });
+  // }
 
   Future<String> getAppUrl(String url) async {
     //앱 URL 받기
@@ -471,7 +471,6 @@ class _MainWebViewState extends State<MainWebView> {
       return await methodChannel
           .invokeMethod('getAppUrl', <String, Object>{'url': url});
     } else {
-      print("iOS");
       return url;
     }
   }
@@ -512,9 +511,16 @@ class _MainWebViewState extends State<MainWebView> {
       });
     }
   }
-  void _handleMessage(RemoteMessage message) {
-    String? url = message.data["ActionURL"];
+  void _handleMessage(RemoteMessage message) async {
+    String url = message.data["ActionURL"];
     String messageKey = message.data.keys.toString();
+
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('PUSH_URL', url);
+
+    print("_handlemessage의 = $url");
+
 
     if(Platform.isAndroid){
       if (url != null && url.isNotEmpty) {
@@ -524,28 +530,23 @@ class _MainWebViewState extends State<MainWebView> {
           if(Platform.isAndroid) {
             _webViewController!.loadUrl(urlRequest: URLRequest(url: Uri.parse(url)));
           }
-          // else { //iOS일 경우
-          //   Navigator.push(
-          //       context,
-          //       // MaterialPageRoute(builder: (context)=> PushWebView(url)),
-          //       MaterialPageRoute(builder: (context) => PushedWebView(myUrl: url)));
-          // }
 
-        } else {
-
-          // WebViewController가 null인 경우 URL을 저장하여 나중에 로드
-          setState(() {
-            print("_handleMessage에서 이동");
-            _initialUrl = url;
-          });
         }
     }
-
     } else {
       if (url != null) {
         print("iOS 메시지 키 입니다 = $messageKey");
 
-        _webViewController!.loadUrl(urlRequest: URLRequest(url: Uri.parse(url)));
+        String? savedUrl = prefs.getString('PUSH_URL');
+
+        if (savedUrl != null && savedUrl.isNotEmpty) {
+          setState(() {
+            print("savedURL이 비어있진 않음");
+            // _initialUrl = savedUrl;
+            _webViewController!.loadUrl(urlRequest: URLRequest(url: Uri.parse(savedUrl)));
+          });
+
+        }
         // Navigator.push(
         //     context,
         //     // MaterialPageRoute(builder: (context)=> PushWebView(url)),
@@ -733,7 +734,7 @@ class _MainWebViewState extends State<MainWebView> {
                   child: Stack(
                 children: [
                   InAppWebView(
-                    initialUrlRequest: URLRequest(url: Uri.parse(_initialUrl ?? "$myUrl")),
+                    initialUrlRequest: URLRequest(url: Uri.parse(_initialUrl!)),
                     initialOptions: InAppWebViewGroupOptions(
                       crossPlatform: InAppWebViewOptions(
                           // mediaPlaybackRequiresUserGesture: false, 여담용
@@ -933,13 +934,13 @@ class _MainWebViewState extends State<MainWebView> {
                       print("onWebViewCreated");
                       // _setCookie();
                       _webViewController = webViewController;
-                      if (_initialUrl != null) {
-                        webViewController!.loadUrl(urlRequest: URLRequest(url: Uri.parse(_initialUrl!)));
-                        setState(() {
-                          print("onWebViewCreated에서 이동");
-                          _initialUrl = null; // 초기 URL을 로드한 후 초기화
-                        });
-                      }
+                      // if (_initialUrl != null) {
+                      //   webViewController!.loadUrl(urlRequest: URLRequest(url: Uri.parse(_initialUrl!)));
+                      //   setState(() {
+                      //     print("onWebViewCreated에서 이동");
+                      //     _initialUrl = null; // 초기 URL을 로드한 후 초기화
+                      //   });
+                      // }
 
                       await CookieManager.instance().setCookie(
                         url: Uri.parse("https://m.kaltour.com/"),

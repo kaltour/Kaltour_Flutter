@@ -7,43 +7,6 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:690602777560:android:80f9a1c6d66c43d90630ad",
-        "android_client_info": {
-          "package_name": "com.example.kaltour_hybrid"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "690602777560-vgdd6ltri14agt41hdj8mlv1hgdhlq78.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyC4WDZP1Uv4yIehoAS1-ehxhYV_Vl0rJ8s"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "690602777560-vgdd6ltri14agt41hdj8mlv1hgdhlq78.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "690602777560-0sstu36q7jukatcojlojephgmb0o8k89.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "Kaltour.HanjinTravel",
-                "app_store_id": "1068782555"
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
         "mobilesdk_app_id": "1:690602777560:android:745c4503bd7907f50630ad",
         "android_client_info": {
           "package_name": "m.kaltour.ver2"
