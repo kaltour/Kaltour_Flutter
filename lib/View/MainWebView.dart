@@ -69,7 +69,7 @@ class _MainWebViewState extends State<MainWebView> {
   late bool adAllowPush = false; //광고성 푸시 허용/비허용 변수
   // bool _notificationEnabled = true;
   String? _token;
-  String? _initialUrl = "https://m.kaltour.com";
+  String? _initialUrl = "https://m.kaltour.com/";
   bool isWebViewReady = false;  // WebView가 준비되었는지 여부를 나타내는 플래그
   late InAppWebViewController _webViewController;
 
@@ -384,7 +384,8 @@ class _MainWebViewState extends State<MainWebView> {
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(const AndroidNotificationChannel(
-            'kaltour', '한진관광',
+            'kaltour', //알림 채널 ID
+        '한진관광', // 알림 채널 이름
             importance: Importance.high));
 
     await flutterLocalNotificationsPlugin
@@ -393,7 +394,7 @@ class _MainWebViewState extends State<MainWebView> {
     ));
   }
 
-  void _createNotificationChannel() async {
+  void _createNotificationChannel() async { // Not Use
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
         "kaltour", "My_Channel",
         importance: Importance.high);
@@ -475,30 +476,30 @@ class _MainWebViewState extends State<MainWebView> {
     }
   }
 
-  Future<void> handleInitialMessage() async {
-    RemoteMessage? initialMessage =
-        await FirebaseMessaging.instance.getInitialMessage();
-    if (initialMessage != null) {
-      String? url = initialMessage.data["ActionURL"];
-      String messageKey = initialMessage.data.keys.toString();
-
-      // loadUrlInWebView(url);
-      print("씨벌 $url, $messageKey");
-
-      if (url != null && url.isNotEmpty) {
-        if (isWebViewReady) {
-          print("url 있음");
-          loadUrlInWebView(url);
-        } else {
-          setState(() {
-            _initialUrl = url;
-          });
-        }
-      }
-    } else {
-      print("없음 씨발");
-    }
-  }
+  // Future<void> handleInitialMessage() async {
+  //   RemoteMessage? initialMessage =
+  //       await FirebaseMessaging.instance.getInitialMessage();
+  //   if (initialMessage != null) {
+  //     String? url = initialMessage.data["ActionURL"];
+  //     String messageKey = initialMessage.data.keys.toString();
+  //
+  //     // loadUrlInWebView(url);
+  //     print(" $url, $messageKey");
+  //
+  //     if (url != null && url.isNotEmpty) {
+  //       if (isWebViewReady) {
+  //         print("url 있음");
+  //         loadUrlInWebView(url);
+  //       } else {
+  //         setState(() {
+  //           _initialUrl = url;
+  //         });
+  //       }
+  //     }
+  //   } else {
+  //     print("없음");
+  //   }
+  // }
 
   void loadUrlInWebView(String url) {
     if (_webViewController != null) {
@@ -515,45 +516,30 @@ class _MainWebViewState extends State<MainWebView> {
     String url = message.data["ActionURL"];
     String messageKey = message.data.keys.toString();
 
-
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('PUSH_URL', url);
 
     print("_handlemessage의 = $url");
 
+    if (url != null) {
+      print("iOS 메시지 키 입니다 = $messageKey");
 
-    if(Platform.isAndroid){
-      if (url != null && url.isNotEmpty) {
-        print("메시지 키 = $messageKey, URL = $url");
-        // WebViewController를 사용하여 URL 새로고침
-        if (_webViewController != null) {
-          if(Platform.isAndroid) {
-            _webViewController!.loadUrl(urlRequest: URLRequest(url: Uri.parse(url)));
-          }
+      String? savedUrl = prefs.getString('PUSH_URL');
 
-        }
-    }
-    } else {
-      if (url != null) {
-        print("iOS 메시지 키 입니다 = $messageKey");
-
-        String? savedUrl = prefs.getString('PUSH_URL');
-
-        if (savedUrl != null && savedUrl.isNotEmpty) {
-          setState(() {
-            print("savedURL이 비어있진 않음");
-            // _initialUrl = savedUrl;
-            _webViewController!.loadUrl(urlRequest: URLRequest(url: Uri.parse(savedUrl)));
-          });
-
-        }
-        // Navigator.push(
-        //     context,
-        //     // MaterialPageRoute(builder: (context)=> PushWebView(url)),
-        //     MaterialPageRoute(builder: (context) => PushedWebView(myUrl: url)));
-      } else {
-        print("url못받음");
+      if (savedUrl != null && savedUrl.isNotEmpty) {
+        setState(() {
+          print("savedURL이 비어있진 않음");
+          // _initialUrl = savedUrl;
+          _webViewController!
+              .loadUrl(urlRequest: URLRequest(url: Uri.parse(savedUrl)));
+        });
       }
+      // Navigator.push(
+      //     context,
+      //     // MaterialPageRoute(builder: (context)=> PushWebView(url)),
+      //     MaterialPageRoute(builder: (context) => PushedWebView(myUrl: url)));
+    } else {
+      print("url못받음");
     }
   }
 
@@ -649,6 +635,16 @@ class _MainWebViewState extends State<MainWebView> {
     await prefs.setBool('adAllowPush', value); // 값 저장하기
   }
 
+  Future<void> _launchURL(String url) async {
+    // 유튜브 앱을 여는 링크 형식
+    final Uri youtubeUri = Uri.parse(url);
+    if (await canLaunch(youtubeUri.toString())) {
+      await launch(youtubeUri.toString());
+    } else {
+      // 앱이 없을 경우 웹 브라우저에서 열기
+      await launch(url);
+    }
+  }
 
 
   // Future<void> _checkLoginUserStatus() async {
@@ -712,8 +708,6 @@ class _MainWebViewState extends State<MainWebView> {
   //   SharedPreferences prefs = await SharedPreferences.getInstance();
   //   return prefs.getBool('promotional_notifications') ?? false;
   // }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -854,7 +848,6 @@ class _MainWebViewState extends State<MainWebView> {
                         //
                         // }
 
-
                       }
 
 
@@ -894,6 +887,10 @@ class _MainWebViewState extends State<MainWebView> {
                     },
                     onLoadStart: (InAppWebViewController controller, uri) {
                       print("onLoadStart");
+
+                      if(uri != null && uri.toString().contains("youtube")) {
+                        _launchURL(uri.toString());
+                      }
                       setState(() {
                         myUrl = uri!;
                         checkLoginUserStatus();

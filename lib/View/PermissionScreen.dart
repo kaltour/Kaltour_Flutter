@@ -10,7 +10,6 @@ import 'package:intl/intl.dart';
 import 'package:kaltour_flutter/Utilities/CheckAppVersion.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
-import 'package:carousel_slider/carousel_slider.dart';
 
 
 class PermissionScreen extends StatefulWidget {
