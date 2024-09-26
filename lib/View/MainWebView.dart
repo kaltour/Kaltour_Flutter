@@ -442,8 +442,6 @@ class _MainWebViewState extends State<MainWebView> {
         await FirebaseMessaging.instance.getInitialMessage();
 
     if (initialMessage != null) {
-      // var now = DateTime.now();
-      // Fluttertoast.showToast(msg: "$initialMessage, $now");
 
       _handleMessage(initialMessage);
     }
@@ -514,55 +512,73 @@ class _MainWebViewState extends State<MainWebView> {
   }
   void _handleMessage(RemoteMessage message) async {
     String url = message.data["ActionURL"];
-    String messageKey = message.data.keys.toString();
-
     SharedPreferences prefs = await SharedPreferences.getInstance();
+
     await prefs.setString('PUSH_URL', url);
 
-    print("_handlemessage의 = $url");
-
-    if (url != null) {
-      print("iOS 메시지 키 입니다 = $messageKey");
-
+    if(url != null && url.isNotEmpty) {
       String? savedUrl = prefs.getString('PUSH_URL');
-
-      if (savedUrl != null && savedUrl.isNotEmpty) {
+      if (savedUrl != null && url.isNotEmpty) {
         setState(() {
-          print("savedURL이 비어있진 않음");
-          // _initialUrl = savedUrl;
-          _webViewController!
-              .loadUrl(urlRequest: URLRequest(url: Uri.parse(savedUrl)));
+          print("savedURL이 비어있지 않음: $savedUrl");
+          _initialUrl = savedUrl;
+
+          if (_webViewController != null) {
+            _webViewController!.loadUrl(
+              urlRequest: URLRequest(url: Uri.parse(savedUrl)),
+            );
+          } else {
+            print("_webViewController가 아직 초기화되지 않음");
+          }
+
         });
       }
-      // Navigator.push(
-      //     context,
-      //     // MaterialPageRoute(builder: (context)=> PushWebView(url)),
-      //     MaterialPageRoute(builder: (context) => PushedWebView(myUrl: url)));
-    } else {
-      print("url못받음");
+      
     }
+
   }
 
   Future<void> checkAppVersion() async {
+
+    print("checkAppVersion 실행");
     final remoteConfig = FirebaseRemoteConfig.instance;
     await remoteConfig.setConfigSettings(RemoteConfigSettings(
       fetchTimeout: const Duration(minutes: 1),
-      minimumFetchInterval: const Duration(hours: 12),
+      minimumFetchInterval: const Duration(hours: 11),
     ));
 
     await remoteConfig.fetchAndActivate();
-    String firebaseVersion = remoteConfig.getString("latest_version");
 
+    // 플랫폼에 따라 다른 버전 키 사용
+    String firebaseVersion;
+    if (Platform.isAndroid) {
+      firebaseVersion = remoteConfig.getString("latest_version_android"); // Android용 버전 키
+      print("Android Remote Config 버전 = $firebaseVersion");
+    } else if (Platform.isIOS) {
+      firebaseVersion = remoteConfig.getString("latest_version_ios"); // iOS용 버전 키
+      print("iOS Remote Config 버전 = $firebaseVersion ");
+      // firebaseVersion = remoteConfig.getString("latest_version");
+    } else {
+      print("Unsupported platform");
+      return;
+    }
+
+    // 현재 앱 버전 가져오기
     PackageInfo packageInfo = await PackageInfo.fromPlatform();
     String appVersion = packageInfo.version;
-    print("파이어 베이스=$firebaseVersion, 앱버전=$appVersion");
+    print("앱 버전=$appVersion");
 
+    // 버전 비교
     if (double.parse(firebaseVersion) > double.parse(appVersion)) {
-      showUpdateDialog();
-      print("업데이트 해야함");
-    } else {
-      MainWebView();
-      print("업데이트 안해도됨");
+      if (Platform.isAndroid) {
+        showUpdateDialog(); // Android 업데이트 다이얼로그
+      } else if (Platform.isIOS) {
+        showUpdateDialog(); // iOS 업데이트 다이얼로그
+      }
+      print("업데이트 필요");
+    }
+    else {
+      print("업데이트 불필요");
     }
   }
 
@@ -926,11 +942,19 @@ class _MainWebViewState extends State<MainWebView> {
                         this.progress = progress / 100;
                       });
                     },
-                    onWebViewCreated: (InAppWebViewController webViewController) async {
+                    onWebViewCreated: (InAppWebViewController webViewController)  {
+                      _webViewController = webViewController;
+                      print("WebViewController가 초기화되었습니다."); // 초기화 로그 추가
+                      if (_initialUrl != null) {
+                        print("초기 URL 로드: $_initialUrl");
+                        _webViewController!.loadUrl(
+                          urlRequest: URLRequest(url: Uri.parse(_initialUrl!)),
+                        );
+                      }
                       //여기다 setcookie, WebView가 생성될 때 호출되는 콜백입니다. InAppWebViewController를 초기화하거나 설정할 수 있습니다.
                       print("onWebViewCreated");
                       // _setCookie();
-                      _webViewController = webViewController;
+
                       // if (_initialUrl != null) {
                       //   webViewController!.loadUrl(urlRequest: URLRequest(url: Uri.parse(_initialUrl!)));
                       //   setState(() {
@@ -939,7 +963,7 @@ class _MainWebViewState extends State<MainWebView> {
                       //   });
                       // }
 
-                      await CookieManager.instance().setCookie(
+                       CookieManager.instance().setCookie(
                         url: Uri.parse("https://m.kaltour.com/"),
                         name: "appCookie",
                         value: "isApp",
