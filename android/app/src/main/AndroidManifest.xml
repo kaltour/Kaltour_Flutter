@@ -33,7 +33,7 @@
             <action android:name="android.intent.action.SEND" />
             <data android:mimeType="*/*" />
         </intent>
-        <package android:name="com.kakao.talk" /> <!-- 카카오톡 -->
+<!--        <package android:name="com.kakao.talk" /> &lt;!&ndash; 카카오톡 &ndash;&gt;-->
         <package android:name="com.nhn.android.search" /> <!-- 네이버페이 -->
         <package android:name="com.samsung.android.spay" /> <!-- 삼성페이 -->
         <package android:name="net.ib.android.smcard" /> <!-- 모니모페이 -->
@@ -68,6 +68,11 @@
         <package android:name="com.TouchEn.mVaccine.webs" /> <!-- TouchEn mVaccine (신한) -->
         <package android:name="kr.co.shiftworks.vguardweb" /> <!-- V-Guard (삼성) -->
         <package android:name="com.ahnlab.v3mobileplus" /> <!-- V3 (NH, 현대) -->
+        <package android:name="com.kt.ktauth" />
+        <package android:name="com.sktelecom.tauth" />
+        <package android:name="com.lguplus.smartotp" />
+
+
     </queries>
 
     <application
@@ -115,6 +120,10 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="m.kaltour.com" />
             </intent-filter>
 
         </activity>

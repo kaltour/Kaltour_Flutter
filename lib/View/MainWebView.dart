@@ -88,7 +88,7 @@ class _MainWebViewState extends State<MainWebView> {
   void initState() {
     super.initState();
     _requestPermissions();
-    print("MainWebView실행");
+    print("MainWebView 초기화");
     setupInteractedMessage();
     checkAppVersion();
     _initializeNotification();
@@ -97,9 +97,7 @@ class _MainWebViewState extends State<MainWebView> {
     // _checkLoginUserStatus();
     _getToken();
     checkLoginUserStatus();
-    // _androidOnly();
     // _showPromotionalAlert();
-    // fetchData();
     // _setCookie();
     // flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     // const AndroidInitializationSettings initializationSettingsAndroid =
@@ -200,7 +198,7 @@ class _MainWebViewState extends State<MainWebView> {
   //   print("setCookies");
   //
   // }
-  void _showPromotionalAlert(BuildContext context) async {
+  void _showPromotionalAlert(BuildContext context) async { //광고성 푸시 알럿
     print("_showPromotionalAlert");
     late DateTime currentDateTime = DateTime.now();
     return showCupertinoDialog<void>(
@@ -448,7 +446,7 @@ class _MainWebViewState extends State<MainWebView> {
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);// 앱이 백그라운드 상태에서 푸시 알림 클릭 하여 열릴 경우 메세지 스트림을 통해 처리
   }
 
-  // void _initializeFirebaseMessaging() {
+  // void _initializeFirebaseMessaging() { //NOT USED
   //   _firebaseMessaging.requestPermission();
   //   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
   //     _handleMessage(message);
@@ -474,7 +472,7 @@ class _MainWebViewState extends State<MainWebView> {
     }
   }
 
-  // Future<void> handleInitialMessage() async {
+  // Future<void> handleInitialMessage() async { //NOT USED
   //   RemoteMessage? initialMessage =
   //       await FirebaseMessaging.instance.getInitialMessage();
   //   if (initialMessage != null) {
@@ -499,17 +497,17 @@ class _MainWebViewState extends State<MainWebView> {
   //   }
   // }
 
-  void loadUrlInWebView(String url) {
-    if (_webViewController != null) {
-      _webViewController!.loadUrl(urlRequest: URLRequest(url: Uri.parse(url)));
-
-      print("loadUrlInWebView의 $url");
-    } else {
-      setState(() {
-        _initialUrl = url;
-      });
-    }
-  }
+  // void loadUrlInWebView(String url) { //NOT USED
+  //   if (_webViewController != null) {
+  //     _webViewController!.loadUrl(urlRequest: URLRequest(url: Uri.parse(url)));
+  //
+  //     print("loadUrlInWebView의 $url");
+  //   } else {
+  //     setState(() {
+  //       _initialUrl = url;
+  //     });
+  //   }
+  // }
   void _handleMessage(RemoteMessage message) async {
     String url = message.data["ActionURL"];
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -582,7 +580,7 @@ class _MainWebViewState extends State<MainWebView> {
     }
   }
 
-  Future<void> showUpdateDialog() {
+  Future<void> showUpdateDialog() { // 최신 앱 요청 알럿
     print("showUpdateDialog");
     return showDialog(
         context: context,
@@ -651,15 +649,24 @@ class _MainWebViewState extends State<MainWebView> {
     await prefs.setBool('adAllowPush', value); // 값 저장하기
   }
 
-  Future<void> _launchURL(String url) async {
-    // 유튜브 앱을 여는 링크 형식
-    final Uri youtubeUri = Uri.parse(url);
-    if (await canLaunch(youtubeUri.toString())) {
-      await launch(youtubeUri.toString());
-    } else {
-      // 앱이 없을 경우 웹 브라우저에서 열기
-      await launch(url);
-    }
+  // Future<void> _launchURL(String url) async {
+  //   // 유튜브 앱을 여는 링크 형식
+  //   final Uri youtubeUri = Uri.parse(url);
+  //   if (await canLaunch(youtubeUri.toString())) {
+  //     await launch(youtubeUri.toString());
+  //   } else {
+  //     // 앱이 없을 경우 웹 브라우저에서 열기
+  //     await launch(url);
+  //   }
+  // }
+
+
+
+  String _extractPackageName(String url) {
+    // Extract package name from intent URL
+    RegExp regExp = RegExp(r'package=([^;,\s]+)');
+    Match? match = regExp.firstMatch(url);
+    return match?.group(1) ?? "";
   }
 
 
@@ -751,6 +758,7 @@ class _MainWebViewState extends State<MainWebView> {
                           // userAgent: customUserAgent,
                           useShouldOverrideUrlLoading: true),
                       android: AndroidInAppWebViewOptions(
+                        useHybridComposition: true,
                           mixedContentMode: AndroidMixedContentMode
                               .MIXED_CONTENT_ALWAYS_ALLOW),
 
@@ -806,8 +814,9 @@ class _MainWebViewState extends State<MainWebView> {
                       if( Platform.isAndroid) {
 
                         if (isApplink(url) && url != "about:blank") {
-                          print("넘어간다");
+
                           String getUrl = await getAppUrl(url);
+                          print("$getUrl 실행");
 
                           if (await canLaunch(getUrl)) {
                             getAppUrl(String url) async {
@@ -904,9 +913,9 @@ class _MainWebViewState extends State<MainWebView> {
                     onLoadStart: (InAppWebViewController controller, uri) {
                       print("onLoadStart");
 
-                      if(uri != null && uri.toString().contains("youtube")) {
-                        _launchURL(uri.toString());
-                      }
+                      // if(uri != null && uri.toString().contains("youtube")) {
+                      //   _launchURL(uri.toString());
+                      // }
                       setState(() {
                         myUrl = uri!;
                         checkLoginUserStatus();

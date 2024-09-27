@@ -72,7 +72,7 @@ void main() async { //시작점
   print("###앱 버전 = $appVersion");
   // await flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(channel);
 
-  checkNotificationPermission(); // 시스템 푸시 허용 확인 함수
+  // checkNotificationPermission(); // 시스템 푸시 허용 확인 함수 (초기화하면 앱 실행시 설정으로 이동됨!!!) 금지!!!
   // initializeNotification(); // 노티 초기화 함수
   runApp(MyApp());
 }
