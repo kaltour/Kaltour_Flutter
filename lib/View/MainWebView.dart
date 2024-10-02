@@ -770,7 +770,7 @@ class _MainWebViewState extends State<MainWebView> {
                     initialOptions: InAppWebViewGroupOptions(
                       crossPlatform: InAppWebViewOptions(
                         cacheEnabled: true,
-                          clearCache: true,
+                          clearCache: Platform.isAndroid ? true : false, // Android에서만 캐시를 지우도록 설정 (iOS에서는 false)
                           transparentBackground: true,
                           javaScriptEnabled: true,
                           // mediaPlaybackRequiresUserGesture: false, 여담용
@@ -789,10 +789,8 @@ class _MainWebViewState extends State<MainWebView> {
                     shouldOverrideUrlLoading: (controller, navigationAction) async{
                       print("=====shouldOverrideUrlLoading======");
 
-                      var curUrl = navigationAction.request.url;
-                      print("curUrl === $curUrl");
-
                       tossPaymentsWebview(url) {
+                        print("tossPaymentsWebview 실행");
                         final appScheme = ConvertUrl(url);
 
                         if(appScheme.isAppLink()) {
@@ -804,6 +802,11 @@ class _MainWebViewState extends State<MainWebView> {
                       }
 
                       var uri = navigationAction.request.url;
+
+                      // var curUrl = navigationAction.request.url;
+                      print("curUrl === $uri");
+
+
                       if (uri == null) {
                         return NavigationActionPolicy.ALLOW;
 
@@ -818,7 +821,6 @@ class _MainWebViewState extends State<MainWebView> {
                           await launchUrl(uri);
                           return NavigationActionPolicy.CANCEL;
                         }
-
                       }
 
                       bool isAppLink(Uri url) {
@@ -830,51 +832,58 @@ class _MainWebViewState extends State<MainWebView> {
                             appScheme != 'data';
                       }
 
-                      if(curUrl == null) return NavigationActionPolicy.CANCEL;
+                      // if(uri == null) return NavigationActionPolicy.CANCEL;
 
                       final url = navigationAction.request.url.toString();
                       print("유알엘 = $url");
 
 
-                      if(isAppLink(curUrl)) {
-                        await controller.stopLoading();
+                      if (Platform.isAndroid) {
+                        if(isAppLink(uri)) {
+                          await controller.stopLoading();
+                          var scheme = uri.scheme;
 
-                        var scheme = curUrl.scheme;
-
-                        if(scheme == "intent") {
-                          if(Platform.isAndroid) {
+                          if(scheme == "intent") {
                             try {
-                              final parsedIntent = await methodChannel.invokeMethod('getAppUrl', {'url': curUrl.toString()});
+                              final parsedIntent = await methodChannel.invokeMethod('getAppUrl', {'url': uri.toString()});
                               print("parsedIntent == $parsedIntent");
-
-
 
                               if (await canLaunchUrl(Uri.parse(parsedIntent))) {
                                 await launchUrl(Uri.parse(parsedIntent));
                                 return NavigationActionPolicy.CANCEL;
-                              }
-
-                              else {
-
-                                final marketUrl = await methodChannel.invokeMethod('getMarketUrl', {'url': curUrl.toString()});
-                                print(" 앱 설치되지 않음, 마켓 URL = $marketUrl");
+                              } else {
+                                final marketUrl = await methodChannel.invokeMethod('getMarketUrl', {'url': uri.toString()});
+                                print("앱 설치되지 않음, 마켓 URL = $marketUrl");
                                 await launchUrl(Uri.parse(marketUrl));
                                 return NavigationActionPolicy.CANCEL;
-;                              }
-                            }catch (e) {
-                              print('ERROR ==  $e');
+                              }
+                            } catch (e) {
+                              print('ERROR == $e');
                             }
-                          }else if (Platform.isIOS) {
-                            var value = await getAppUrl(url.toString());
-                            String getUrl = value.toString();
-                            tossPaymentsWebview(getUrl);
                           }
+                          return NavigationActionPolicy.CANCEL;
+                        } else {
+                          return NavigationActionPolicy.ALLOW;
                         }
+                      } else if (Platform.isIOS) {
+                        var value = await getAppUrl(url.toString());
+                        String getUrl = value.toString();
+                        tossPaymentsWebview(getUrl);
 
-                        return NavigationActionPolicy.CANCEL;
-
-                      }else {
-                        return NavigationActionPolicy.ALLOW;
+                        // if(isAppLink(uri)) {
+                        //   await controller.stopLoading();
+                        //   var scheme = uri.scheme;
+                        //
+                        //   if(scheme == "intent") {
+                        //     var value = await getAppUrl(url.toString());
+                        //     String getUrl = value.toString();
+                        //     tossPaymentsWebview(getUrl);
+                        //   }
+                        //
+                        //   return NavigationActionPolicy.CANCEL;
+                        // } else {
+                        //   return NavigationActionPolicy.ALLOW;
+                        // }
                       }
 
 
@@ -1009,46 +1018,48 @@ class _MainWebViewState extends State<MainWebView> {
                       //   },
                       // );
                     },
-                    onCreateWindow: (controller, createWindowRequest) async {
-                      showDialog(context: context,
-                          builder: (context) {
-                        return AlertDialog(
-                          content: Container (
-                            width: MediaQuery.of(context).size.width,
-                            height: 400,
-                            child: InAppWebView (
-                              windowId: createWindowRequest.windowId,
-                              initialOptions: InAppWebViewGroupOptions(
-                                android: AndroidInAppWebViewOptions(
-                                  builtInZoomControls: true,
-                                  thirdPartyCookiesEnabled: true,
-                                ),
-                                crossPlatform: InAppWebViewOptions(
-                                  cacheEnabled: true,
-                                  javaScriptEnabled: true,
-                                ),
-                              ),
-
-                              onWebViewCreated:(InAppWebViewController controller) {
-
-                              },
-                              onCloseWindow: (controller) {
-                                if (Navigator.canPop(context)) {
-                                  Navigator.pop(context);
-                                }
-                              },
-
-                            ),
-
-
-                          ),
-
-                        );
-
-                          });
-                      return true;
-
-                    },
+                    // onCreateWindow: (controller, createWindowRequest) async {
+                    //
+                    //   print("-----onCreateWindow-----");
+                    //   showDialog(context: context,
+                    //       builder: (context) {
+                    //     return AlertDialog(
+                    //       content: Container (
+                    //         width: MediaQuery.of(context).size.width,
+                    //         height: 400,
+                    //         child: InAppWebView (
+                    //           windowId: createWindowRequest.windowId,
+                    //           initialOptions: InAppWebViewGroupOptions(
+                    //             android: AndroidInAppWebViewOptions(
+                    //               builtInZoomControls: true,
+                    //               thirdPartyCookiesEnabled: true,
+                    //             ),
+                    //             crossPlatform: InAppWebViewOptions(
+                    //               cacheEnabled: true,
+                    //               javaScriptEnabled: true,
+                    //             ),
+                    //           ),
+                    //
+                    //           onWebViewCreated:(InAppWebViewController controller) {
+                    //
+                    //           },
+                    //           onCloseWindow: (controller) {
+                    //             if (Navigator.canPop(context)) {
+                    //               Navigator.pop(context);
+                    //             }
+                    //           },
+                    //
+                    //         ),
+                    //
+                    //
+                    //       ),
+                    //
+                    //     );
+                    //
+                    //       });
+                    //   return true;
+                    //
+                    // },
                     androidOnPermissionRequest:
                         (controller, origin, resources) async {
                       return PermissionRequestResponse(
