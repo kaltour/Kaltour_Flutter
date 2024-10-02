@@ -115,6 +115,12 @@
             <intent-filter>
                 <action android:name="FLUTTER_NOTIFICATION_CLICK"/>
                 <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="upluscorporation" />
+                <data android:scheme="ktauthexternalcall" />
+                <data android:scheme="tauthlink" />
+
             </intent-filter>
 
             <intent-filter>
@@ -122,8 +128,7 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="m.kaltour.com" />
+
             </intent-filter>
 
         </activity>

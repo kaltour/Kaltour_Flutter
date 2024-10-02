@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:get/route_manager.dart';
 import 'package:kaltour_flutter/View/PermissionScreen.dart';
+import 'package:tosspayments_widget_sdk_flutter/webview/payment_window_webview.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -732,6 +733,15 @@ class _MainWebViewState extends State<MainWebView> {
   //   return prefs.getBool('promotional_notifications') ?? false;
   // }
 
+  Future<bool> _isAppInstalled(String packageName) async {
+    try {
+      final result = await Process.run('pm', ['list', 'packages', packageName]);
+      return result.stdout.toString().contains(packageName);
+    } catch (e) {
+      return false; // 예외 발생 시 false 반환
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // _configureFirebaseMessaging(context);
@@ -740,6 +750,11 @@ class _MainWebViewState extends State<MainWebView> {
       //   actions: [
       //     ElevatedButton(onPressed: toggleFixedValue, child: Text("Toggle $adAllowPush")),
       //   ],
+      //
+      // ),
+
+      // appBar: AppBar(
+      //   title: Text("LIVE"),
       //
       // ),
       body: SafeArea(
@@ -754,6 +769,10 @@ class _MainWebViewState extends State<MainWebView> {
                     initialUrlRequest: URLRequest(url: Uri.parse(_initialUrl!)),
                     initialOptions: InAppWebViewGroupOptions(
                       crossPlatform: InAppWebViewOptions(
+                        cacheEnabled: true,
+                          clearCache: true,
+                          transparentBackground: true,
+                          javaScriptEnabled: true,
                           // mediaPlaybackRequiresUserGesture: false, 여담용
                           // userAgent: customUserAgent,
                           useShouldOverrideUrlLoading: true),
@@ -766,17 +785,23 @@ class _MainWebViewState extends State<MainWebView> {
                       //   mixedContentMode: AndroidMixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW
                       // )
                     ),
-                    shouldOverrideUrlLoading:
-                        (controller, navigationAction) async {
 
-                          tossPaymentsWebview(url) {
-                            final appScheme = ConvertUrl(url); // Intent URL을 앱 스킴 URL로 변환
+                    shouldOverrideUrlLoading: (controller, navigationAction) async{
+                      print("=====shouldOverrideUrlLoading======");
 
-                            if (appScheme.isAppLink()) {                                  // 앱 스킴 URL인지 확인
-                              appScheme.launchApp(mode: LaunchMode.externalApplication);  // 앱 설치 상태에 따라 앱 실행 또는 마켓으로 이동
-                              return NavigationDecision.prevent;
-                            }
-                          }
+                      var curUrl = navigationAction.request.url;
+                      print("curUrl === $curUrl");
+
+                      tossPaymentsWebview(url) {
+                        final appScheme = ConvertUrl(url);
+
+                        if(appScheme.isAppLink()) {
+                          appScheme.launchApp(mode: LaunchMode.externalApplication);
+
+                          return NavigationDecision.prevent;
+
+                        }
+                      }
 
                       var uri = navigationAction.request.url;
                       if (uri == null) {
@@ -795,121 +820,67 @@ class _MainWebViewState extends State<MainWebView> {
                         }
 
                       }
-                      // await controller.setOptions(options: InAppWebViewGroupOptions(crossPlatform: InAppWebViewOptions(
-                      //   userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
-                      // )));
-                      bool isApplink(String url) {
-                        final appScheme = Uri.parse(url).scheme;
 
-                        print("앱스킴 = $appScheme"); //https
+                      bool isAppLink(Uri url) {
+                        final appScheme = url.scheme;
+                        // final appScheme = Uri.parse(Uri).scheme;
                         return appScheme != 'http' &&
                             appScheme != 'https' &&
                             appScheme != 'about:blank' &&
-                            // appScheme != 'intent://' &&
                             appScheme != 'data';
                       }
+
+                      if(curUrl == null) return NavigationActionPolicy.CANCEL;
+
                       final url = navigationAction.request.url.toString();
                       print("유알엘 = $url");
 
-                      if( Platform.isAndroid) {
 
-                        if (isApplink(url) && url != "about:blank") {
+                      if(isAppLink(curUrl)) {
+                        await controller.stopLoading();
 
-                          String getUrl = await getAppUrl(url);
-                          print("$getUrl 실행");
+                        var scheme = curUrl.scheme;
 
-                          if (await canLaunch(getUrl)) {
-                            getAppUrl(String url) async {
-                              var parsingUrl = await methodChannel.invokeMethod(
-                                  'getAppUrl', <String, Object>{'url': url});
-                              return parsingUrl;
+                        if(scheme == "intent") {
+                          if(Platform.isAndroid) {
+                            try {
+                              final parsedIntent = await methodChannel.invokeMethod('getAppUrl', {'url': curUrl.toString()});
+                              print("parsedIntent == $parsedIntent");
+
+
+
+                              if (await canLaunchUrl(Uri.parse(parsedIntent))) {
+                                await launchUrl(Uri.parse(parsedIntent));
+                                return NavigationActionPolicy.CANCEL;
+                              }
+
+                              else {
+
+                                final marketUrl = await methodChannel.invokeMethod('getMarketUrl', {'url': curUrl.toString()});
+                                print(" 앱 설치되지 않음, 마켓 URL = $marketUrl");
+                                await launchUrl(Uri.parse(marketUrl));
+                                return NavigationActionPolicy.CANCEL;
+;                              }
+                            }catch (e) {
+                              print('ERROR ==  $e');
                             }
-
-                            NavigationActionPolicy.CANCEL;
+                          }else if (Platform.isIOS) {
                             var value = await getAppUrl(url.toString());
                             String getUrl = value.toString();
-                            await launchUrl(Uri.parse(getUrl));
-                            return NavigationActionPolicy.CANCEL;
-                          } else {
-                            print("앱 설치되지 않음");
-                            getMarketUrl(String url) async {
-                              var parsingURl = await methodChannel.invokeMethod(
-                                  'getMarketUrl', <String, Object>{'url': url});
-                              return parsingURl;
-                            }
-
-                            NavigationActionPolicy.CANCEL;
-                            var value = await getMarketUrl(url.toString());
-                            String marketUrl = value.toString();
-                            await launchUrl(Uri.parse(marketUrl));
-                            return NavigationActionPolicy.CANCEL;
+                            tossPaymentsWebview(getUrl);
                           }
                         }
 
-                      }else if (Platform.isIOS) {
-                        var value = await getAppUrl(url.toString());
-                        String getUrl = value.toString();
-                        tossPaymentsWebview(getUrl);
+                        return NavigationActionPolicy.CANCEL;
 
-                        // if(getUrl != null && uri.scheme == "kb-acp://") {
-                        //   if(await canLaunchUrl(uri)){
-                        //     await launchUrl(uri);
-                        //
-                        //   }else {
-                        //     print("열수없음");
-                        //   }
-                        //
-                        // }
-
-
-
-                        // print("겟 = $getUrl");
-                        // await launchUrl(Uri.parse(getUrl));
-                        // return NavigationActionPolicy.CANCEL;
-                        //
-                        // String getUrl = await getAppUrl(url);
-                        // if(await canLaunch(getUrl)) {
-                        //   await launchUrl(Uri.parse(getUrl));
-                        //
-                        // }
-
+                      }else {
+                        return NavigationActionPolicy.ALLOW;
                       }
 
 
-                      // final url = navigationAction.request.url.toString();
-                      // print("유알엘 = $url");
-                      // if (isApplink(url) && url != "about:blank") {
-                      //   print("넘어간다");
-                      //   String getUrl = await getAppUrl(url);
-                      //
-                      //   if (await canLaunch(getUrl)) {
-                      //     getAppUrl(String url) async {
-                      //       var parsingUrl = await methodChannel.invokeMethod(
-                      //           'getAppUrl', <String, Object>{'url': url});
-                      //       print("canLaunch $url");
-                      //       // NavigationActionPolicy.CANCEL;
-                      //       return parsingUrl;
-                      //     }
-                      //     // NavigationActionPolicy.CANCEL;
-                      //     var value = await getAppUrl(url.toString());
-                      //     String getUrl = value.toString();
-                      //     await launchUrl(Uri.parse(getUrl));
-                      //   } else {
-                      //     print("앱 설치되지 않음"); //왜 안깔려잇다고 나오노?
-                      //     getMarketUrl(String url) async {
-                      //       var parsingURl = await methodChannel.invokeMethod(
-                      //           'getMarketUrl', <String, Object>{'url': url});
-                      //       // return NavigationActionPolicy.CANCEL;
-                      //       return parsingURl;
-                      //     }
-                      //     NavigationActionPolicy.CANCEL;
-                      //     var value = await getMarketUrl(url.toString());
-                      //     String marketUrl = value.toString();
-                      //     await launchUrl(Uri.parse(marketUrl));
-                      //     return NavigationActionPolicy.CANCEL;
-                      //   }
-                      // }
                     },
+
+
                     onLoadStart: (InAppWebViewController controller, uri) {
                       print("onLoadStart");
 
@@ -1037,6 +1008,46 @@ class _MainWebViewState extends State<MainWebView> {
                       //     );
                       //   },
                       // );
+                    },
+                    onCreateWindow: (controller, createWindowRequest) async {
+                      showDialog(context: context,
+                          builder: (context) {
+                        return AlertDialog(
+                          content: Container (
+                            width: MediaQuery.of(context).size.width,
+                            height: 400,
+                            child: InAppWebView (
+                              windowId: createWindowRequest.windowId,
+                              initialOptions: InAppWebViewGroupOptions(
+                                android: AndroidInAppWebViewOptions(
+                                  builtInZoomControls: true,
+                                  thirdPartyCookiesEnabled: true,
+                                ),
+                                crossPlatform: InAppWebViewOptions(
+                                  cacheEnabled: true,
+                                  javaScriptEnabled: true,
+                                ),
+                              ),
+
+                              onWebViewCreated:(InAppWebViewController controller) {
+
+                              },
+                              onCloseWindow: (controller) {
+                                if (Navigator.canPop(context)) {
+                                  Navigator.pop(context);
+                                }
+                              },
+
+                            ),
+
+
+                          ),
+
+                        );
+
+                          });
+                      return true;
+
                     },
                     androidOnPermissionRequest:
                         (controller, origin, resources) async {

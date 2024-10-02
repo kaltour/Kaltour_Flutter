@@ -64,6 +64,7 @@ dependencies:
   tosspayments_widget_sdk_flutter: ^1.0.3
   win32: ^5.2.0
   android_intent_plus: ^3.1.1
+  iamport_flutter: ^0.10.19
 #  google_fonts: ^6.2.0
 #  flutter_native_splash: ^2.3.9
 
